@@ -5,6 +5,8 @@ First pass: one network (nxx1, seed=42, gain=1.0)
 """
 import numpyro
 numpyro.set_host_device_count(4)
+from jax import config as jax_config
+jax_config.update("jax_enable_x64", False)
 
 import jax
 print("jax devices:", jax.local_device_count(), flush=True)

@@ -8,9 +8,6 @@ import hssm
 import pytensor
 import pandas as pd
 
-import numpyro
-numpyro.set_host_device_count(4)
-
 import matplotlib
 matplotlib.use('Agg')  # non-interactive backend for Oscar
 
@@ -46,7 +43,7 @@ def main():
     print(model)
 
     idata = model.sample(
-        sampler="numpyro",
+        sampler="pymc",
         chains=4,
         cores=4,
         draws=1000,

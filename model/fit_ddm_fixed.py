@@ -54,6 +54,27 @@ def main():
     print("Sampling posterior predictive...")
     model.sample_posterior_predictive(idata, inplace=True)
 
+    import matplotlib
+    matplotlib.use('Agg')  # non-interactive backend for Oscar
+    import matplotlib.pyplot as plt
+
+    print("Generating plots...")
+
+    # Default PPC plot
+    fig = model.plot_predictive(step=True, bins=50)
+    fig.savefig(str(OUT / "ddm_fixed_ppc.png"), dpi=150, bbox_inches='tight')
+    plt.close()
+
+    # Quantile probability plot
+    try:
+        ax = hssm.plotting.plot_quantile_probability(model)
+        ax.figure.savefig(str(OUT / "ddm_fixed_qpp.png"), dpi=150, bbox_inches='tight')
+        plt.close()
+    except Exception as e:
+        print(f"Quantile probability plot failed: {e}")
+
+    print("Plots saved.")
+
     out_path = OUT / "ddm_fixed_nxx1_s42_g1.0"
     idata.to_netcdf(str(out_path))
     print(f"Saved to {out_path}")

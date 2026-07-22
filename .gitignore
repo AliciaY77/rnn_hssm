@@ -10,3 +10,5 @@ __pycache__/
 !data/data_raw/.gitkeep
 !data/processed/.gitkeep
 !cluster/log/.gitkeep
+
+!data/data_raw/rnn_ddm_nxx1_s42_g1.0.parquet

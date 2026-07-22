@@ -1,0 +1,57 @@
+"""
+Fit DDM with Weibull collapsing bound to RNN behavioral data.
+Model: v ~ 1 + coherence (coherence effect on drift rate)
+First pass: one network (nxx1, seed=42, gain=1.0)
+"""
+import pathlib
+import hssm
+import pytensor
+import pandas as pd
+
+pytensor.config.floatX = "float32"
+
+DATA = pathlib.Path(__file__).resolve().parents[1] / "data" / "processed" / "hssm_ready_nxx1_s42_g1.0.parquet"
+OUT  = pathlib.Path(__file__).resolve().parents[1] / "output"
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    print("Fitting DDM with Weibull collapsing bound")
+    print(f"Loading data from {DATA}")
+    df = pd.read_parquet(DATA)
+    print(f"  {len(df):,} trials")
+
+    model = hssm.HSSM(
+        data=df,
+        model="angle",
+        loglik_kind="approx_differentiable",
+        include=[
+            {
+                "name": "v",
+                "formula": "v ~ 1 + coherence",
+                "prior": {
+                    "Intercept": {"name": "Normal", "mu": 0.0, "sigma": 2.0},
+                    "coherence": {"name": "Normal", "mu": 0.0, "sigma": 2.0},
+                },
+                "link": "identity",
+            }
+        ],
+    )
+    print(model)
+
+    idata = model.sample(
+        sampler="nuts_numpyro",
+        chains=4,
+        cores=4,
+        draws=1000,
+        tune=1000,
+        target_accept=0.9,
+        idata_kwargs=dict(log_likelihood=True),
+        random_seed=42,
+    )
+
+    out_path = OUT / "ddm_weibull_nxx1_s42_g1.0"
+    idata.to_netcdf(str(out_path))
+    print(f"Saved to {out_path}")
+
+if __name__ == "__main__":
+    main()

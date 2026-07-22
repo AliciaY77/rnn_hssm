@@ -1,0 +1,12 @@
+output/
+data/data_raw/
+data/processed/
+cluster/log/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+!output/.gitkeep
+!data/data_raw/.gitkeep
+!data/processed/.gitkeep
+!cluster/log/.gitkeep

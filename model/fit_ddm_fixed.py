@@ -44,12 +44,10 @@ def main():
     print(model)
 
     idata = model.sample(
-        sampler="pymc",
         chains=4,
         cores=4,
         draws=1000,
         tune=1000,
-        target_accept=0.9,
         idata_kwargs=dict(log_likelihood=True),
         random_seed=42,
     )

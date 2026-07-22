@@ -73,19 +73,25 @@ def main():
     print("Generating plots...")
 
     # Default PPC plot
-    ax = model.plot_predictive(step=True, bins=50)
-    ax.figure.savefig(str(OUT / "ddm_weibull_ppc.png"), dpi=150, bbox_inches='tight')
-    plt.close('all')
+    try:
+        result = model.plot_predictive(step=True, bins=50)
+        if hasattr(result, 'figure'):
+            result.figure.savefig(str(OUT / "ddm_weibull_ppc.png"), dpi=150, bbox_inches='tight')
+        elif hasattr(result, 'savefig'):
+            result.savefig(str(OUT / "ddm_weibull_ppc.png"), dpi=150, bbox_inches='tight')
+        plt.close('all')
+        print("PPC plot saved.")
+    except Exception as e:
+        print(f"PPC plot failed: {e}")
 
     # Quantile probability plot
     try:
         ax = hssm.plotting.plot_quantile_probability(model)
         ax.figure.savefig(str(OUT / "ddm_weibull_qpp.png"), dpi=150, bbox_inches='tight')
-        plt.close()
+        plt.close('all')
+        print("QPP saved.")
     except Exception as e:
         print(f"Quantile probability plot failed: {e}")
-
-    print("Plots saved.")
 
     out_path = OUT / "ddm_weibull_nxx1_s42_g1.0"
     idata.to_netcdf(str(out_path))

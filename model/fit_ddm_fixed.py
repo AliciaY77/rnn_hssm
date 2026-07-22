@@ -8,6 +8,9 @@ import hssm
 import pytensor
 import pandas as pd
 
+import numpyro
+numpyro.set_host_device_count(4)
+
 pytensor.config.floatX = "float32"
 from jax import config as jax_config
 jax_config.update("jax_enable_x64", False)

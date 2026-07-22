@@ -28,6 +28,10 @@ def main():
     df = pd.read_parquet(DATA)
     print(f"  {len(df):,} trials")
 
+    # Add RT offset to help sampler (no real non-decision time in RNN data)
+    df['rt'] = df['rt'] + 0.3
+    print(f"  RT range after offset: {df['rt'].min():.3f} - {df['rt'].max():.3f} s")
+
     # Bin coherence for quantile probability plot
     df['coh_bin'] = pd.cut(df['coherence'], bins=3, labels=['low', 'mid', 'high'])
 
@@ -44,14 +48,6 @@ def main():
                     "coherence": {"name": "Normal", "mu": 0.0, "sigma": 2.0},
                 },
                 "link": "identity",
-            },
-            {
-                "name": "alpha",
-                "prior": {"name": "Gamma", "mu": 1.5, "sigma": 0.5},
-            },
-            {
-                "name": "beta",
-                "prior": {"name": "Gamma", "mu": 3.0, "sigma": 1.0},
             },
         ],
     )

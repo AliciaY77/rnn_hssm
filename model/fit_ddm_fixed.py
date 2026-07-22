@@ -64,9 +64,9 @@ def main():
     print("Generating plots...")
 
     # Default PPC plot
-    fig = model.plot_predictive(step=True, bins=50)
-    fig.savefig(str(OUT / "ddm_fixed_ppc.png"), dpi=150, bbox_inches='tight')
-    plt.close()
+    ax = model.plot_predictive(step=True, bins=50)
+    ax.figure.savefig(str(OUT / "ddm_fixed_ppc.png"), dpi=150, bbox_inches='tight')
+    plt.close('all')
 
     # Quantile probability plot
     try:

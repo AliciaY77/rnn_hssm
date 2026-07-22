@@ -75,7 +75,9 @@ def main():
 
     # Quantile probability plot
     try:
-        ax = hssm.plotting.plot_quantile_probability(model, cond="coh_bin")
+        ax = hssm.plotting.plot_quantile_probability(
+            model, cond="coh_bin", predictive_style="ellipse", ellipse_confidence=0.95
+        )
         ax.figure.savefig(str(OUT / "ddm_fixed_qpp.png"), dpi=150, bbox_inches='tight')
         plt.close('all')
         print("QPP saved.")

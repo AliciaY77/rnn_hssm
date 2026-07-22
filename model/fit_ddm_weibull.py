@@ -7,12 +7,8 @@ import pathlib
 import hssm
 import pytensor
 import pandas as pd
-
-import numpyro
-numpyro.set_host_device_count(4)
-
 import matplotlib
-matplotlib.use('Agg')  # non-interactive backend for Oscar
+matplotlib.use('Agg')
 
 pytensor.config.floatX = "float32"
 from jax import config as jax_config
@@ -85,7 +81,9 @@ def main():
 
     # Quantile probability plot
     try:
-        ax = hssm.plotting.plot_quantile_probability(model, cond="coh_bin")
+        ax = hssm.plotting.plot_quantile_probability(
+            model, cond="coh_bin", predictive_style="ellipse", ellipse_confidence=0.95
+        )
         ax.figure.savefig(str(OUT / "ddm_weibull_qpp.png"), dpi=150, bbox_inches='tight')
         plt.close('all')
         print("QPP saved.")

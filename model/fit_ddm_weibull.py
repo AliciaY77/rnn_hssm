@@ -11,6 +11,9 @@ import pandas as pd
 import numpyro
 numpyro.set_host_device_count(4)
 
+import matplotlib
+matplotlib.use('Agg')  # non-interactive backend for Oscar
+
 pytensor.config.floatX = "float32"
 from jax import config as jax_config
 jax_config.update("jax_enable_x64", False)
@@ -58,7 +61,6 @@ def main():
         draws=1000,
         tune=1000,
         target_accept=0.95,
-        mp_ctx="spawn",
         idata_kwargs=dict(log_likelihood=True),
         random_seed=42,
     )
@@ -66,8 +68,6 @@ def main():
     print("Sampling posterior predictive...")
     model.sample_posterior_predictive(idata, inplace=True)
 
-    import matplotlib
-    matplotlib.use('Agg')  # non-interactive backend for Oscar
     import matplotlib.pyplot as plt
 
     print("Generating plots...")

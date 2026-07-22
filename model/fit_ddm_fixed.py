@@ -3,14 +3,6 @@ Fit DDM with fixed threshold to RNN behavioral data.
 Model: v ~ 1 + coherence (coherence effect on drift rate)
 First pass: one network (nxx1, seed=42, gain=1.0)
 """
-import numpyro
-numpyro.set_host_device_count(4)
-from jax import config as jax_config
-jax_config.update("jax_enable_x64", False)
-
-import jax
-print("jax devices:", jax.local_device_count(), flush=True)
-
 import pathlib
 import hssm
 import pytensor
@@ -19,6 +11,8 @@ import matplotlib
 matplotlib.use('Agg')
 
 pytensor.config.floatX = "float32"
+from jax import config as jax_config
+jax_config.update("jax_enable_x64", False)
 
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data" / "processed" / "hssm_ready_nxx1_s42_g1.0.parquet"
 OUT  = pathlib.Path(__file__).resolve().parents[1] / "output"

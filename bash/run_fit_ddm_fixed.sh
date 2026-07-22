@@ -19,5 +19,4 @@ export PYTENSOR_FLAGS="optimizer=None"
 export PYTHONPATH=/users/xyuan48/rnn_hssm:$PYTHONPATH
 echo "PYTHONPATH is: $PYTHONPATH"
 
-export JAX_ENABLE_X64=0
 python -u model/fit_ddm_fixed.py

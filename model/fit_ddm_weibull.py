@@ -28,6 +28,9 @@ def main():
     df = pd.read_parquet(DATA)
     print(f"  {len(df):,} trials")
 
+    # Bin coherence for quantile probability plot
+    df['coh_bin'] = pd.cut(df['coherence'], bins=3, labels=['low', 'mid', 'high'])
+
     model = hssm.HSSM(
         data=df,
         model="weibull",
@@ -86,7 +89,7 @@ def main():
 
     # Quantile probability plot
     try:
-        ax = hssm.plotting.plot_quantile_probability(model)
+        ax = hssm.plotting.plot_quantile_probability(model, cond="coh_bin")
         ax.figure.savefig(str(OUT / "ddm_weibull_qpp.png"), dpi=150, bbox_inches='tight')
         plt.close('all')
         print("QPP saved.")

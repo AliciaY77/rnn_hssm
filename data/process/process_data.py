@@ -15,7 +15,7 @@ import pathlib
 import pandas as pd
 import numpy as np
 
-RAW = pathlib.Path(__file__).resolve().parents[2] / "data" / "data_raw" / "rnn_ddm_data.parquet"
+RAW = pathlib.Path(__file__).resolve().parents[2] / "data" / "data_raw" / "rnn_ddm_nxx1_s42_g1.0.parquet"
 OUT = pathlib.Path(__file__).resolve().parents[2] / "data" / "processed"
 
 ACTIVATION = "nxx1"

@@ -9,6 +9,8 @@ import pytensor
 import pandas as pd
 
 pytensor.config.floatX = "float32"
+from jax import config as jax_config
+jax_config.update("jax_enable_x64", False)
 
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data" / "processed" / "hssm_ready_nxx1_s42_g1.0.parquet"
 OUT  = pathlib.Path(__file__).resolve().parents[1] / "output"
@@ -39,7 +41,7 @@ def main():
     print(model)
 
     idata = model.sample(
-        sampler="nuts_numpyro",
+        sampler="numpyro",
         chains=4,
         cores=4,
         draws=1000,

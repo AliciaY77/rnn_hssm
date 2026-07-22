@@ -3,13 +3,18 @@ Fit DDM with fixed threshold to RNN behavioral data.
 Model: v ~ 1 + coherence (coherence effect on drift rate)
 First pass: one network (nxx1, seed=42, gain=1.0)
 """
+import numpyro
+numpyro.set_host_device_count(4)
+
+import jax
+print("jax devices:", jax.local_device_count(), flush=True)
+
 import pathlib
 import hssm
 import pytensor
 import pandas as pd
-
 import matplotlib
-matplotlib.use('Agg')  # non-interactive backend for Oscar
+matplotlib.use('Agg')
 
 pytensor.config.floatX = "float32"
 
@@ -44,6 +49,7 @@ def main():
     print(model)
 
     idata = model.sample(
+        sampler="numpyro",
         chains=4,
         cores=4,
         draws=1000,

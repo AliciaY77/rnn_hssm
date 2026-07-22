@@ -46,10 +46,13 @@ def main():
         draws=1000,
         tune=1000,
         target_accept=0.9,
+        mp_ctx="spawn",
         idata_kwargs=dict(log_likelihood=True),
         random_seed=42,
-        mp_ctx="spawn",
     )
+
+    print("Sampling posterior predictive...")
+    model.sample_posterior_predictive(idata, inplace=True)
 
     out_path = OUT / "ddm_fixed_nxx1_s42_g1.0"
     idata.to_netcdf(str(out_path))

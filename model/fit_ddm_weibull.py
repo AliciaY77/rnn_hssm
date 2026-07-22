@@ -35,7 +35,15 @@ def main():
                     "coherence": {"name": "Normal", "mu": 0.0, "sigma": 2.0},
                 },
                 "link": "identity",
-            }
+            },
+            {
+                "name": "alpha",
+                "prior": {"name": "Gamma", "mu": 1.5, "sigma": 0.5},
+            },
+            {
+                "name": "beta",
+                "prior": {"name": "Gamma", "mu": 3.0, "sigma": 1.0},
+            },
         ],
     )
     print(model)
@@ -46,11 +54,14 @@ def main():
         cores=4,
         draws=1000,
         tune=1000,
-        target_accept=0.9,
+        target_accept=0.95,
+        mp_ctx="spawn",
         idata_kwargs=dict(log_likelihood=True),
         random_seed=42,
-        mp_ctx="spawn",
     )
+
+    print("Sampling posterior predictive...")
+    model.sample_posterior_predictive(idata, inplace=True)
 
     out_path = OUT / "ddm_weibull_nxx1_s42_g1.0"
     idata.to_netcdf(str(out_path))

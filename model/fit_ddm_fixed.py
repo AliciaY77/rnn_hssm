@@ -12,8 +12,6 @@ import matplotlib
 matplotlib.use('Agg')  # non-interactive backend for Oscar
 
 pytensor.config.floatX = "float32"
-from jax import config as jax_config
-jax_config.update("jax_enable_x64", False)
 
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data" / "processed" / "hssm_ready_nxx1_s42_g1.0.parquet"
 OUT  = pathlib.Path(__file__).resolve().parents[1] / "output"

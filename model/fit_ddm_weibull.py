@@ -22,7 +22,7 @@ def main():
 
     model = hssm.HSSM(
         data=df,
-        model="angle",
+        model="weibull",
         loglik_kind="approx_differentiable",
         include=[
             {
@@ -47,6 +47,7 @@ def main():
         target_accept=0.9,
         idata_kwargs=dict(log_likelihood=True),
         random_seed=42,
+        mp_ctx="spawn",
     )
 
     out_path = OUT / "ddm_weibull_nxx1_s42_g1.0"

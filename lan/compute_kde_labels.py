@@ -54,7 +54,7 @@ def compute_labels(data, bandwidth=0.1):
             full_mask[group_mask] = r_mask
 
             rt_subset = group_rts[r_mask]
-            if rt_subset.sum() < 5:
+            if len(rt_subset) < 5:
                 continue
 
             try:

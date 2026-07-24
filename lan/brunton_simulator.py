@@ -36,7 +36,9 @@ COH_LEVELS = np.linspace(-0.15, 0.15, 11)
 
 
 def simulate_one_trial(lam, B, coherence):
-    """Simulate a single trial. Returns (rt_seconds, response)."""
+    """Simulate a single trial. Returns (rt_seconds, response).
+    response: 1=correct, -1=incorrect (accuracy coding for HSSM)
+    """
     a = 0.0
     rt = T
     for t in range(T):
@@ -45,7 +47,13 @@ def simulate_one_trial(lam, B, coherence):
         if abs(a) >= B:
             rt = t + 1
             break
-    response = 1 if a > 0 else -1
+    # Accuracy coding: correct if accumulator sign matches coherence sign
+    if coherence == 0:
+        response = 1.0  # treat zero coherence as correct by convention
+    elif coherence > 0:
+        response = 1.0 if a > 0 else -1.0
+    else:
+        response = 1.0 if a < 0 else -1.0
     rt_seconds = rt * 0.025
     return rt_seconds, response
 

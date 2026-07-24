@@ -5,6 +5,8 @@ cluster/log/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+lan/training_data/
+lan/trained_lan/
 
 !output/.gitkeep
 !data/data_raw/.gitkeep

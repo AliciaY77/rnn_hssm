@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH --job-name=brunton_lan
+#SBATCH --account=carney-frankmj-condo2
+#SBATCH --partition=batch
+#SBATCH --qos=carney-condo2
+#SBATCH --time=06:00:00
+#SBATCH --mem=32G
+#SBATCH --cpus-per-task=4
+#SBATCH --output=/users/xyuan48/rnn_hssm/cluster/log/%x-%j.out
+#SBATCH --error=/users/xyuan48/rnn_hssm/cluster/log/%x-%j.err
+
+cd /users/xyuan48/rnn_hssm
+
+module load miniforge3/25.3.0-3
+source ${MAMBA_ROOT_PREFIX}/etc/profile.d/conda.sh
+conda activate hssm
+
+export PYTHONPATH=/users/xyuan48/rnn_hssm:$PYTHONPATH
+echo "PYTHONPATH is: $PYTHONPATH"
+
+python -u lan/train_brunton_lan.py

@@ -82,9 +82,8 @@ def main():
             predictive_style="ellipse",
             ellipse_confidence=0.95
         )
-        # Expand y-axis to show full ellipses
-        ymin, ymax = ax.get_ylim()
-        ax.set_ylim(ymin - 0.2, ymax + 0.2)
+        # Fixed y-axis range so fixed/weibull plots are comparable
+        ax.set_ylim(0.0, 1.2)
         ax.figure.savefig(str(OUT / "ddm_fixed_qpp.png"), dpi=150, bbox_inches='tight')
         plt.close('all')
         print("QPP saved.")

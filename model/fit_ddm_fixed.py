@@ -24,7 +24,8 @@ def main():
     print(f"  {len(df):,} trials")
 
     # Bin coherence for quantile probability plot
-    df['coh_bin'] = pd.cut(df['coherence'], bins=3, labels=['low', 'mid', 'high'])
+    df['coh_abs'] = df['coherence'].abs().round(2)
+    df['coh_bin'] = df['coh_abs'].astype(str)
 
     model = hssm.HSSM(
         data=df,

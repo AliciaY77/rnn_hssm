@@ -87,6 +87,27 @@ def main():
     model_trainer.train_model(save_history=True, save_model=True, verbose=1)
     print(f"Done! Model saved to {MODEL_SAVE_DIR}")
 
+    print("Exporting to ONNX...")
+    onnx_path = MODEL_SAVE_DIR / "brunton.onnx"
+
+    # Export trained model to ONNX format for use with HSSM
+    # Input shape: (batch, 5) = [lam, B, coherence, rt, response]
+    dummy_input = torch.zeros(1, torch_training_dataset.input_dim)
+    torch.onnx.export(
+        net.model,
+        dummy_input,
+        str(onnx_path),
+        input_names=["input"],
+        output_names=["output"],
+        dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+        opset_version=17,
+    )
+    print(f"ONNX model saved to {onnx_path}")
+    print(f"\nTo use in HSSM:")
+    print(f"  from hssm.distribution_utils import make_distribution, make_likelihood_callable")
+    print(f"  loglik_op = make_likelihood_callable(loglik='{onnx_path}', loglik_kind='approx_differentiable', backend='jax', params_is_reg=[False, False, False])")
+    print(f"  BruntonDist = make_distribution(rv='brunton', loglik=loglik_op, list_params=['lam', 'B', 'coherence'], bounds={{'lam': (-0.5, 0.5), 'B': (0.5, 3.0)}})")
+
 
 if __name__ == "__main__":
     main()

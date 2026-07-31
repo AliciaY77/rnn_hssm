@@ -58,56 +58,48 @@ def main():
     print("Network config:", network_config)
     print("Train config:",   train_config)
 
-    # Build network
+    # Build network — new API: no save_folder or generative_model_id
     net = lanfactory.trainers.TorchMLP(
         network_config=deepcopy(network_config),
         input_shape=torch_training_dataset.input_dim,
-        save_folder=str(MODEL_SAVE_DIR),
-        generative_model_id='brunton'
     )
 
+    # Save configs
     lanfactory.utils.save_configs(
-        model_id=net.model_id + '_torch_',
+        model_id='brunton',
         save_folder=str(MODEL_SAVE_DIR),
         network_config=network_config,
         train_config=train_config,
-        allow_abs_path_folder_generation=True
     )
 
-    # Train
+    # Train — new API
     model_trainer = lanfactory.trainers.ModelTrainerTorchMLP(
         model=net,
         train_config=train_config,
-        data_loader_train=torch_training_dataloader,
-        data_loader_valid=torch_validation_dataloader,
-        allow_abs_path_folder_generation=True
+        train_dl=torch_training_dataloader,
+        valid_dl=torch_validation_dataloader,
+        allow_abs_path_folder_generation=True,
+        seed=42,
     )
 
     print("Training LAN...")
-    model_trainer.train_model(save_history=True, save_model=True, verbose=1)
+    model_trainer.train_and_evaluate(
+        output_folder=str(MODEL_SAVE_DIR),
+        output_file_id='brunton',
+        run_id='run0',
+        save_outputs=True,
+        verbose=1,
+    )
     print(f"Done! Model saved to {MODEL_SAVE_DIR}")
 
+    # Export to ONNX using built-in method
     print("Exporting to ONNX...")
-    onnx_path = MODEL_SAVE_DIR / "brunton.onnx"
-
-    # Get the underlying PyTorch nn.Module from the LANFactory wrapper
-    if hasattr(net, 'model'):
-        torch_model = net.model
-    elif hasattr(net, 'network'):
-        torch_model = net.network
-    else:
-        torch_model = net  # fall back to net itself
-
-    torch_model.eval()
-    dummy_input = torch.zeros(1, torch_training_dataset.input_dim)
-    torch.onnx.export(
-        torch_model,
-        dummy_input,
-        str(onnx_path),
-        input_names=["input"],
-        output_names=["output"],
-        dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
-        opset_version=17,
+    onnx_path = str(MODEL_SAVE_DIR / "brunton.onnx")
+    dev = torch.device("cpu")
+    lanfactory.trainers.ModelTrainerTorchMLP._save_onnx(
+        model=net,
+        dev=dev,
+        path=onnx_path,
     )
     print(f"ONNX model saved to {onnx_path}")
     print(f"\nTo use in HSSM:")

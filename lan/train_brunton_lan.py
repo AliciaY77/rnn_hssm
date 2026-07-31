@@ -90,11 +90,18 @@ def main():
     print("Exporting to ONNX...")
     onnx_path = MODEL_SAVE_DIR / "brunton.onnx"
 
-    # Export trained model to ONNX format for use with HSSM
-    # Input shape: (batch, 5) = [lam, B, coherence, rt, response]
+    # Get the underlying PyTorch nn.Module from the LANFactory wrapper
+    if hasattr(net, 'model'):
+        torch_model = net.model
+    elif hasattr(net, 'network'):
+        torch_model = net.network
+    else:
+        torch_model = net  # fall back to net itself
+
+    torch_model.eval()
     dummy_input = torch.zeros(1, torch_training_dataset.input_dim)
     torch.onnx.export(
-        net.model,
+        torch_model,
         dummy_input,
         str(onnx_path),
         input_names=["input"],

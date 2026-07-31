@@ -38,7 +38,7 @@ def main():
     # Dataloaders
     torch_training_dataset = lanfactory.trainers.DatasetTorch(
         file_ids=[str(torch_data_path)],
-        batch_size=128
+        batch_size=125
     )
     torch_training_dataloader = torch.utils.data.DataLoader(
         torch_training_dataset, shuffle=True,

@@ -1,8 +1,9 @@
 """
 Fit DDM with Weibull collapsing bound to RNN behavioral data.
 Model: v ~ 1 + coherence (coherence effect on drift rate)
-First pass: one network (nxx1, seed=42, gain=1.0)
+One network (nxx1, seed=42), gain passed via --gain (default 1.0).
 """
+import argparse
 import pathlib
 import hssm
 import pytensor
@@ -14,14 +15,26 @@ pytensor.config.floatX = "float32"
 from jax import config as jax_config
 jax_config.update("jax_enable_x64", False)
 
-DATA = pathlib.Path(__file__).resolve().parents[1] / "data" / "processed" / "hssm_ready_nxx1_s42_g1.0.parquet"
-OUT  = pathlib.Path(__file__).resolve().parents[1] / "output"
+DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "data" / "processed"
+OUT      = pathlib.Path(__file__).resolve().parents[1] / "output"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gain", type=float, default=1.0)
+    return parser.parse_args()
+
 
 def main():
+    args = parse_args()
+    gain = args.gain
+    tag = f"nxx1_s42_g{gain}"
+
     OUT.mkdir(parents=True, exist_ok=True)
     print("Fitting DDM with Weibull collapsing bound")
-    print(f"Loading data from {DATA}")
-    df = pd.read_parquet(DATA)
+    data_path = DATA_DIR / f"hssm_ready_{tag}.parquet"
+    print(f"Loading data from {data_path}")
+    df = pd.read_parquet(data_path)
     print(f"  {len(df):,} trials")
 
     # Add RT offset to help sampler (no real non-decision time in RNN data)
@@ -72,9 +85,9 @@ def main():
     try:
         result = model.plot_predictive(step=True, bins=50)
         if hasattr(result, 'figure'):
-            result.figure.savefig(str(OUT / "ddm_weibull_ppc.png"), dpi=150, bbox_inches='tight')
+            result.figure.savefig(str(OUT / f"ddm_weibull_{tag}_ppc.png"), dpi=150, bbox_inches='tight')
         elif hasattr(result, 'savefig'):
-            result.savefig(str(OUT / "ddm_weibull_ppc.png"), dpi=150, bbox_inches='tight')
+            result.savefig(str(OUT / f"ddm_weibull_{tag}_ppc.png"), dpi=150, bbox_inches='tight')
         plt.close('all')
         print("PPC plot saved.")
     except Exception as e:
@@ -90,13 +103,13 @@ def main():
         )
         # Fixed y-axis range so fixed/weibull plots are comparable
         ax.set_ylim(0.0, 1.2)
-        ax.figure.savefig(str(OUT / "ddm_weibull_qpp.png"), dpi=150, bbox_inches='tight')
+        ax.figure.savefig(str(OUT / f"ddm_weibull_{tag}_qpp.png"), dpi=150, bbox_inches='tight')
         plt.close('all')
         print("QPP saved.")
     except Exception as e:
         print(f"Quantile probability plot failed: {e}")
 
-    out_path = OUT / "ddm_weibull_nxx1_s42_g1.0"
+    out_path = OUT / f"ddm_weibull_{tag}"
     idata.to_netcdf(str(out_path))
     print(f"Saved to {out_path}")
 

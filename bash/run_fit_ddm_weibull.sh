@@ -9,14 +9,16 @@
 #SBATCH --output=/users/xyuan48/rnn_hssm/cluster/log/%x-%j.out
 #SBATCH --error=/users/xyuan48/rnn_hssm/cluster/log/%x-%j.err
 
-cd /users/xyuan48/rnn_hssm
+GAIN=${1:-1.0}
 
+cd /users/xyuan48/rnn_hssm
 module load miniforge3/25.3.0-3
 source ${MAMBA_ROOT_PREFIX}/etc/profile.d/conda.sh
 conda activate hssm
-
 export PYTENSOR_FLAGS="optimizer=None"
 export PYTHONPATH=/users/xyuan48/rnn_hssm:$PYTHONPATH
 echo "PYTHONPATH is: $PYTHONPATH"
+echo "Fitting gain: $GAIN"
 
-python -u model/fit_ddm_weibull.py
+python -u data/process/process_data.py --gain $GAIN
+python -u model/fit_ddm_weibull.py --gain $GAIN

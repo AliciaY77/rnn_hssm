@@ -29,6 +29,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 pytensor.config.floatX = "float32"
+
+import jax
 from jax import config as jax_config
 jax_config.update("jax_enable_x64", False)
 

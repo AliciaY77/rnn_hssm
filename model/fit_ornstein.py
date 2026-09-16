@@ -13,6 +13,12 @@ Model: v ~ 1 + coherence, g free (uniform -1 to 1)
 Usage:
     python model/fit_ornstein.py --gain 1.0 --seed 42
 """
+
+import numpyro
+
+numpyro.set_host_device_count(4)
+
+
 import argparse
 import pathlib
 import hssm
@@ -25,6 +31,9 @@ import matplotlib.pyplot as plt
 pytensor.config.floatX = "float32"
 from jax import config as jax_config
 jax_config.update("jax_enable_x64", False)
+
+print("JAX devices:", jax.devices())
+print("JAX local device count:", jax.local_device_count())
 
 DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "data" / "processed"
 OUT_DIR  = pathlib.Path(__file__).resolve().parents[1] / "output"

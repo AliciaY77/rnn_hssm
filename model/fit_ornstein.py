@@ -1,18 +1,4 @@
-"""
-Fit Ornstein-Uhlenbeck (leaky/unstable DDM) to RNN behavioral data using HSSM.
-
-The ornstein model has a 'g' parameter (leak/instability):
-    g < 0: leaky integrator
-    g = 0: perfect integrator (standard DDM)
-    g > 0: unstable/attractor dynamics
-
-This directly maps to the Brunton lambda parameter.
-
-Model: v ~ 1 + coherence, g free (uniform -1 to 1)
-
-Usage:
-    python model/fit_ornstein.py --gain 1.0 --seed 42
-"""
+# Fit Ornstein-Uhlenbeck model to RNN behavioral data
 
 import numpyro
 
@@ -61,11 +47,11 @@ def main():
     print(f"  RT range: {df['rt'].min():.3f} - {df['rt'].max():.3f} s")
     print(f"  Accuracy: {(df['response']==1.0).mean():.3f}")
 
-    # Add RT offset — ornstein model needs t > 0 and RTs are very short
+    # add RT offset
     df['rt'] = df['rt'] + 0.3
     print(f"  RT range after offset: {df['rt'].min():.3f} - {df['rt'].max():.3f} s")
 
-    # Bin coherence for QPP
+    # bin coherence for QPP
     df['coh_abs'] = df['coherence'].abs().round(2)
     df['coh_bin'] = df['coh_abs'].astype(str)
 

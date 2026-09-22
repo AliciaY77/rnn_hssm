@@ -1,4 +1,8 @@
 # Fit Ornstein-Uhlenbeck model to RNN behavioral data
+#
+# Sign convention of g (verified empirically against ssm-simulators 0.8.3, issue #1):
+#   the simulator/LAN implement dx = (v - g*x) dt + dW, so g > 0 = LEAKY, g < 0 = UNSTABLE/attractive.
+#   LAN range: v [-2, 2], a [0.3, 3] (half-separation), z [0.1, 0.9], g [-1, 1], t [1e-3, 2].
 
 import numpyro
 

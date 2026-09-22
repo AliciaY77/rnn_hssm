@@ -11,7 +11,14 @@ model/fit_ornstein.py (no coherence regression), and writes:
 
 Grid (20 cells, issue #1): g in {-1, -0.5, 0, 0.5, 1} x a in {1.0, 1.5} x n in {1000, 3700}.
 Fixed: v = 0.0, z = 0.5, t = 0.1 s (stretched native non-decision time; no 0.3 s offset).
-Deadline: 4.5 s = 750 ms x 6 (time stretch k = 6).
+Deadline: 4.5 s = 750 ms x 6 (time stretch k = 6); --no-deadline keeps every trial (max_t = 20 s).
+
+SIGN CONVENTION (verified empirically on ssms 0.8.3, see issue #1): the simulator and hence the LAN
+implement dx = (v - g*x) dt + dW, so g > 0 is LEAKY (mean-reverting) and g < 0 is UNSTABLE / attractive.
+Boundaries sit at -a and +a (a is the half-separation); z is the relative start point.
+
+Variants: --no-lapse disables HSSM's default 5% lapse mixture (Uniform(0, 20 s) RTs), which the
+simulated data do not contain and which conflicts with the 4.5 s deadline truncation.
 
 Usage:
   python recovery/simulate_and_fit_ou.py --cell 7
@@ -59,10 +66,12 @@ def parse_args():
     p.add_argument("--tune", type=int, default=1000)
     p.add_argument("--smoke", action="store_true", help="tune=draws=20, 1 chain; pipeline check only")
     p.add_argument("--tag", type=str, default="")
+    p.add_argument("--no-lapse", action="store_true", help="p_outlier=None: no lapse mixture")
+    p.add_argument("--no-deadline", action="store_true", help="keep all trials up to max_t=20 s")
     return p.parse_args()
 
 
-def simulate(g, a, n, seed):
+def simulate(g, a, n, seed, deadline):
     theta = dict(FIXED, g=g, a=a)
     sim = simulator(theta=theta, model="ornstein", n_samples=n,
                     delta_t=DELTA_T, max_t=MAX_T, random_state=seed)
@@ -72,8 +81,8 @@ def simulate(g, a, n, seed):
     # ssms marks non-terminated trials with negative rt (-999) or rt >= max_t; treat both as non-crossers
     n_noterm = int(((df.rt < 0) | (df.rt >= MAX_T)).sum())
     df = df[(df.rt > 0) & (df.rt < MAX_T)]
-    n_late = int((df.rt > DEADLINE).sum())
-    df = df[df.rt <= DEADLINE].reset_index(drop=True)
+    n_late = int((df.rt > deadline).sum())
+    df = df[df.rt <= deadline].reset_index(drop=True)
     df["response"] = np.where(df["response"] > 0, 1.0, -1.0)
     return df, dict(n_requested=n, n_not_terminated=n_noterm, n_past_deadline=n_late,
                     n_kept=int(len(df)), frac_dropped=float(1 - len(df) / n))
@@ -83,16 +92,19 @@ def main():
     args = parse_args()
     g, a, n = GRID[args.cell]
     seed = 1000 + args.cell
-    tag = args.tag or (f"g{g:+.1f}_a{a:.1f}_n{n}" + ("_smoke" if args.smoke else ""))
+    deadline = MAX_T if args.no_deadline else DEADLINE
+    variant = ("_nolapse" if args.no_lapse else "") + ("_nodeadline" if args.no_deadline else "")
+    tag = args.tag or (f"g{g:+.1f}_a{a:.1f}_n{n}{variant}" + ("_smoke" if args.smoke else ""))
     OUT.mkdir(parents=True, exist_ok=True)
     print(f"cell {args.cell}: g={g} a={a} n={n} seed={seed} tag={tag}", flush=True)
 
-    df, sim_meta = simulate(g, a, n, seed)
+    df, sim_meta = simulate(g, a, n, seed, deadline)
     print("simulated:", sim_meta, flush=True)
     print(f"  RT median {df.rt.median():.3f} s, 90th {df.rt.quantile(.9):.3f}, "
           f"P(response=+1) {(df.response == 1).mean():.3f}", flush=True)
 
-    model = hssm.HSSM(data=df, model="ornstein", loglik_kind="approx_differentiable")
+    kw = dict(p_outlier=None, lapse=None) if args.no_lapse else {}
+    model = hssm.HSSM(data=df, model="ornstein", loglik_kind="approx_differentiable", **kw)
     print(model, flush=True)
 
     draws, tune, chains = (20, 20, 1) if args.smoke else (args.draws, args.tune, 4)
@@ -118,7 +130,8 @@ def main():
     meta = dict(cell=args.cell, g_true=g, a_true=a, n=n, seed=seed, tag=tag, smoke=args.smoke,
                 draws=draws, tune=tune, chains=chains, n_divergences=n_div,
                 total_draws=int(draws * chains), sampling_minutes=elapsed / 60,
-                deadline_s=DEADLINE, fixed=FIXED, hssm_version=hssm.__version__, **sim_meta)
+                deadline_s=deadline, no_lapse=args.no_lapse, no_deadline=args.no_deadline,
+                variant=variant, fixed=FIXED, hssm_version=hssm.__version__, **sim_meta)
     (OUT / f"cell{args.cell:02d}_{tag}_meta.json").write_text(json.dumps(meta, indent=2))
     print("divergences:", n_div, "of", draws * chains, flush=True)
 

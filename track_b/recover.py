@@ -41,32 +41,40 @@ def simulate_choices_analytic(rel, g, v, a_bias, rng):
     return (rng.random(len(p)) < p).astype(int)
 
 
-def stage_route1(reps, n_trials, mle_csv):
+def _recover_one(args):
+    seed, gain, kind, rep, g_true, v_true, a_true, n_trials, g0s = args
+    d = load_network(seed, gain=gain, n_trials=n_trials)
+    rel = d["rel"]
+    rng = np.random.default_rng(abs(hash((seed, gain, kind, rep))) % 2**31)
+    y = simulate_choices_analytic(rel, g_true, v_true, a_true, rng)
+    t0 = time.time()
+    r = fit_analytic(rel, y, g0s=g0s)
+    lo, hi = r["g"] - 1.96 * r["g_se"], r["g"] + 1.96 * r["g_se"]
+    row = dict(seed=seed, gain=gain, kind=kind, rep=rep, g_true=g_true, v_true=v_true,
+               a_bias_true=a_true, g=r["g"], g_se=r["g_se"], g_lo=lo, g_hi=hi, v=r["v"],
+               a_bias=r["a_bias"], nll=r["nll"], n_trials=len(y),
+               sign_ok=bool(np.sign(r["g"]) == np.sign(g_true)),
+               covered=bool(lo <= g_true <= hi), secs=time.time() - t0)
+    print(f"seed {seed} gain {gain} [{kind} rep {rep}]: true g = {g_true:+.3f} -> "
+          f"{r['g']:+.3f} [{lo:+.3f}, {hi:+.3f}] "
+          f"(sign {'ok' if row['sign_ok'] else 'WRONG'}, "
+          f"{'covered' if row['covered'] else 'NOT covered'}), v {v_true:.1f} -> {r['v']:.1f}", flush=True)
+    return row
+
+
+def stage_route1(reps, n_trials, mle_csv, procs=7, g0s=(0.0,)):
+    import multiprocessing as mp
     mle = pd.read_csv(mle_csv)
-    rows = []
+    jobs = []
     for seed in SEEDS:
-        d = load_network(seed, n_trials=n_trials)
-        rel = d["rel"]
         for gain in GAINS:
             f = mle[(mle.seed == seed) & (mle.gain == gain)].iloc[0]
             for kind, g_true in (("fitted", float(f.g)), ("theory", G_THEORY[gain])):
                 for rep in range(reps):
-                    rng = np.random.default_rng(hash((seed, gain, kind, rep)) % 2**31)
-                    y = simulate_choices_analytic(rel, g_true, float(f.v), float(f.a_bias), rng)
-                    t0 = time.time()
-                    r = fit_analytic(rel, y)
-                    lo, hi = r["g"] - 1.96 * r["g_se"], r["g"] + 1.96 * r["g_se"]
-                    rows.append(dict(seed=seed, gain=gain, kind=kind, rep=rep, g_true=g_true,
-                                     v_true=float(f.v), a_bias_true=float(f.a_bias),
-                                     g=r["g"], g_se=r["g_se"], g_lo=lo, g_hi=hi, v=r["v"],
-                                     a_bias=r["a_bias"], nll=r["nll"], n_trials=len(y),
-                                     sign_ok=bool(np.sign(r["g"]) == np.sign(g_true)),
-                                     covered=bool(lo <= g_true <= hi), secs=time.time() - t0))
-                    print(f"seed {seed} gain {gain} [{kind} rep {rep}]: true g = {g_true:+.3f} -> "
-                          f"{r['g']:+.3f} [{lo:+.3f}, {hi:+.3f}] "
-                          f"(sign {'ok' if rows[-1]['sign_ok'] else 'WRONG'}, "
-                          f"{'covered' if rows[-1]['covered'] else 'NOT covered'}), "
-                          f"v {float(f.v):.1f} -> {r['v']:.1f}", flush=True)
+                    jobs.append((seed, gain, kind, rep, g_true, float(f.v), float(f.a_bias),
+                                 n_trials, tuple(g0s)))
+    with mp.get_context("fork").Pool(procs) as pool:
+        rows = pool.map(_recover_one, jobs)
     tab = pd.DataFrame(rows)
     OUT.mkdir(parents=True, exist_ok=True)
     tab.to_csv(OUT / "recovery_route1.csv", index=False)
@@ -157,9 +165,11 @@ def main():
     ap.add_argument("--mle-csv", type=pathlib.Path, default=OUT / "analytic_per_network_mle.csv")
     ap.add_argument("--bounded-dir", type=pathlib.Path, default=OUT / "bounded")
     ap.add_argument("--rec-out", type=pathlib.Path, default=OUT / "bounded_recovery")
+    ap.add_argument("--procs", type=int, default=7)
+    ap.add_argument("--g0s", type=float, nargs="+", default=[0.0])
     a = ap.parse_args()
     if a.stage == "route1":
-        stage_route1(a.reps, a.n_trials, a.mle_csv)
+        stage_route1(a.reps, a.n_trials, a.mle_csv, a.procs, a.g0s)
     elif a.stage == "make-r2":
         stage_make_r2(a.n_trials, a.mle_csv, a.bounded_dir)
     else:

@@ -29,3 +29,9 @@ output/track_a/*.nc
 # draws (an intermediate for the PPC scripts) or the pooled-over-networks draws files
 output/track_a/*_b1.5_s[0-9][0-9]_draws.csv
 output/track_a/pernetpool_*
+!output/track_b/
+output/track_b/recovery/*.npz
+output/track_b/bounded*/*.json
+
+# round-2 report figures
+!output/report/

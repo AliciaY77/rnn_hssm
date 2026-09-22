@@ -11,7 +11,10 @@ Reuses gain-controller-rnn's own functions so the choice and kernel definitions 
 Run with the rnn_gain env from anywhere:
   RNN_T=750 RNN_EPOCHS=100 python kernel_fit/export_evidence.py --repo ../RNN_Gain_Mod/gain-controller-rnn --n-trials 2000
 Writes data/processed/kernel/seed<S>.npz  (rel evidence float16 (N,T), labels, goals, coh_signed, and per gain:
-choice_g<gain>, dvT_g<gain>) and output/kernel_fit/network_kernels.csv.
+choice_g<gain>, dvT_g<gain>, tcross2_g<gain>, tcross15_g<gain>) and output/kernel_fit/network_kernels.csv.
+tcross<thr>_g<gain> = index (ms) of the first step with |dv| >= thr, NaN if the trial never crosses ("bound-hit"
+observable used by track_b/ to break the leak-vs-bound degeneracy).  --out-dir / --tab-out redirect the outputs
+(used to regenerate into a temp dir and verify bit-identity before replacing the shared data).
 """
 import argparse, os, pathlib, sys, time
 os.environ.setdefault("RNN_T", "750"); os.environ.setdefault("RNN_EPOCHS", "100")
@@ -28,10 +31,13 @@ def main():
     ap.add_argument("--gains", type=float, nargs="+", default=[0.8, 1.0, 1.2])
     ap.add_argument("--n-trials", type=int, default=2000)
     ap.add_argument("--data-seed", type=int, default=0)
+    ap.add_argument("--out-dir", type=pathlib.Path, default=None, help="npz output dir (default data/processed/kernel)")
+    ap.add_argument("--tab-out", type=pathlib.Path, default=None, help="kernel table dir (default output/kernel_fit)")
     a = ap.parse_args()
+    out_data = (a.out_dir or OUT_DATA).resolve(); out_tab = (a.tab_out or OUT_TAB).resolve()
     sys.path.insert(0, str(a.repo)); os.chdir(a.repo)
     import gainrnn.regime_lib as L, gainrnn.eigcore as E
-    OUT_DATA.mkdir(parents=True, exist_ok=True); OUT_TAB.mkdir(parents=True, exist_ok=True)
+    out_data.mkdir(parents=True, exist_ok=True); out_tab.mkdir(parents=True, exist_ok=True)
     rows = []
     for s in a.seeds:
         t0 = time.time(); m = E.load_model("nxx1", s)
@@ -45,10 +51,14 @@ def main():
             ch = L.choices_from_dv(ld)
             k = L.psychophysical_kernel(m, f, n_trials=a.n_trials, seed=a.data_seed, ld=ld, ds=ds)
             out[f"choice_g{f}"] = ch; out[f"dvT_g{f}"] = ld[:, -1].numpy()
+            dv = np.asarray(ld.numpy() if hasattr(ld, "numpy") else ld)                 # (N, T) decision variable
+            for thr, nm in ((2.0, "tcross2"), (1.5, "tcross15")):                       # first |dv| >= thr, NaN if never
+                hit = np.abs(dv) >= thr
+                out[f"{nm}_g{f}"] = np.where(hit.any(1), hit.argmax(1), np.nan).astype(np.float32)
             rows.append(dict(seed=s, gain=f, n=len(ch), acc=k["acc"], slope=k["slope"], **{f"w{i}": w for i, w in enumerate(k["weights"])}))
-        np.savez_compressed(OUT_DATA / f"seed{s}.npz", **out)
+        np.savez_compressed(out_data / f"seed{s}.npz", **out)
         print(f"seed {s}: {time.time()-t0:.0f}s | " + " ".join(f"g{r['gain']}: slope {r['slope']:+.3f} acc {r['acc']:.3f}" for r in rows[-len(a.gains):]), flush=True)
-    tab = pd.DataFrame(rows); tab.to_csv(OUT_TAB / "network_kernels.csv", index=False)
+    tab = pd.DataFrame(rows); tab.to_csv(out_tab / "network_kernels.csv", index=False)
     print("\nmean kernel slope by gain:"); print(tab.groupby("gain")[["slope", "acc"]].agg(["mean", "sem"]).round(4).to_string())
 
 

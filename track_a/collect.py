@@ -93,6 +93,28 @@ def main():
     print("\n=== pooled fits (g > 0 = leaky) ===")
     print(pooled[show].round(4).to_string(index=False))
 
+    # native-unit translation table (the issue's deliverable), pooled fits only
+    if len(pooled):
+        nt = pooled.copy()
+        sk = np.sqrt(nt.k.values)
+        nt["g_native_mean"] = nt.g_mean * nt.k
+        nt["g_native_hdi3"] = nt.g_hdi3 * nt.k
+        nt["g_native_hdi97"] = nt.g_hdi97 * nt.k
+        nt["a_native_mean"] = nt.a_mean / sk
+        nt["v_native_at_0.15"] = nt.v0p15_mean * sk
+        nt["v_native_at_0"] = nt.v0_mean * sk
+        nt["v_native_per_unit_coherence"] = nt.v_coherence_signed_mean * sk
+        nt["t_native_ms"] = (nt.t_fixed - 0.3) / nt.k * 1000
+        cols = ["gain", "k", "n", "g_mean", "g_native_mean", "g_native_hdi3", "g_native_hdi97",
+                "a_mean", "a_native_mean", "v0p15_mean", "v_native_at_0.15", "v_native_at_0",
+                "v_native_per_unit_coherence", "z_mean", "t_fixed", "t_native_ms",
+                "edge_g", "r_hat_max", "ess_bulk_min", "divergences", "omission_frac"]
+        cols = [c for c in cols if c in nt.columns]
+        nt[cols].to_csv(OUT / "native_units.csv", index=False)
+        print("\n=== native-unit translation (g_nat = g*k, a_nat = a/sqrt(k), "
+              "v_nat = v*sqrt(k), t_nat = (t-0.3)/k; g > 0 = leaky) ===")
+        print(nt[cols].round(4).to_string(index=False))
+
     if len(extra):
         cols = [c for c in show if c in extra.columns]
         extra[["tag", "kind"] + cols].to_csv(OUT / "other_fits.csv", index=False)

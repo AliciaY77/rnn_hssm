@@ -108,7 +108,7 @@ def main():
     ap.add_argument("--gains", type=float, nargs="+", default=[0.8, 1.0, 1.2])
     ap.add_argument("--k", type=float, default=10.0)
     ap.add_argument("--n-draws", type=int, default=20)
-    ap.add_argument("--draws-glob", type=str, default="g{gain}_k{k:g}_b1.5_pooled*_draws.csv")
+    ap.add_argument("--draws-glob", type=str, default="g{gain}_k{k:g}_b1.5_pooled_draws.csv")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out-tag", type=str, default="")
     a = ap.parse_args()
@@ -124,8 +124,10 @@ def main():
         if not hits:
             print(f"gain {gn}: no draws file matching {pat}; skipping", flush=True)
             continue
-        draws = pd.read_csv(hits[-1])
-        print(f"gain {gn}: {hits[-1].name}, {len(draws)} draws", flush=True)
+        if len(hits) > 1:
+            raise SystemExit(f"gain {gn}: {pat} is ambiguous, matches {[h.name for h in hits]}")
+        draws = pd.read_csv(hits[0])
+        print(f"gain {gn}: {hits[0].name}, {len(draws)} draws", flush=True)
 
         rel, coh, ch_net, seeds, n_net = load_gain(gn)
         w_net, s_net = kernel(rel, ch_net)

@@ -1,4 +1,4 @@
-output/
+output/*
 data/data_raw/
 data/processed/
 cluster/log/
@@ -9,6 +9,9 @@ lan/training_data/
 lan/trained_lan/
 
 !output/.gitkeep
+# issue #1 recovery: track tables/figures/meta, not netcdfs
+!output/recovery/
+output/recovery/*.nc
 !data/data_raw/.gitkeep
 !data/processed/.gitkeep
 !cluster/log/.gitkeep

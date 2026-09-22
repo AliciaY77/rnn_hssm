@@ -11,7 +11,7 @@
 #SBATCH --error=/users/igrahek/rnn_hssm_track_b/cluster/log/%x-%A_%a.err
 # Route 2 (issue #4): bounded OU MC likelihood, one (seed, gain, hit-mode) per task.
 # Task list: track_b/bash/tasks_bounded.txt -- 0-79 = gains 0.8 and 1.2 (both variants),
-# 80-119 = gain 1.0, 120-159 = the plain Bernoulli hit variant at gains 0.8 and 1.2.
+# 80-119 = gain 1.0 (none, cross); 120-159 = Bernoulli hit variant at 0.8 and 1.2; 160-179 = at 1.0.
 cd /users/igrahek/rnn_hssm_track_b
 PY=/users/igrahek/.conda/envs/pyHSSM_New_Nov24/bin/python
 read -r S G H <<< "$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" track_b/bash/tasks_bounded.txt)"

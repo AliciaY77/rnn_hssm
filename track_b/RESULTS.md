@@ -76,3 +76,95 @@ regenerated into a temp directory with the `rnn_gain` env and checked key by key
 files before replacing them: `rel`, `labels`, `goals`, `coh_signed`, `choice_g*` and `dvT_g*` are
 **bit-identical** for all 20 networks (verification log in this note below), so Track A's inputs are
 unchanged.
+
+---
+
+## 1. Route 1 (unbounded, exact likelihood): the transition, per network, with intervals
+
+60 fits (20 networks × 3 gains, 2000 trials each) by maximum likelihood with numerical-Hessian SEs, and
+the same 60 by NUTS (4 chains × 1000 warmup / 1000 draws, priors g ~ N(0, 10), v ~ HalfNormal(100),
+a_bias ~ N(0, 1)); plus one pooled fit per gain over all 40 000 trials.
+
+### Per network (`output/track_b/analytic_per_network.csv`)
+
+| gain | median g [IQR] (MLE) | g > 0 | 95 % Wald excludes 0 on the predicted side | median g [IQR] (NUTS) | 94 % HDI excludes 0 |
+|---|---|---|---|---|---|
+| 0.8 | **+4.13** [+3.02, +4.63] | 20/20 | **20/20** (predicted g > 0) | +3.95 [+2.96, +4.50] | **20/20** |
+| 1.0 | **+0.32** [−0.34, +0.79] | 12/20 | 15/20 (either side: 10 above, 5 below) | +0.33 [−0.34, +0.81] | 15/20 (10 above, 5 below) |
+| 1.2 | **−2.63** [−3.56, −2.04] | 0/20 | **20/20** (predicted g < 0) | −2.63 [−3.56, −2.03] | **20/20** |
+
+Range of the per-network MLE: +2.50 … +6.03 at gain 0.8, −0.90 … +1.48 at 1.0, −5.17 … −0.93 at 1.2.
+Median v = 51.3 / 45.6 / 42.9 (noise units).
+
+### Pooled per gain, 40 000 trials (`output/track_b/analytic_pooled.csv`)
+
+| gain | g (MLE) ± SE | 95 % Wald | g (posterior mean) | 94 % HDI | R-hat | v | a_bias |
+|---|---|---|---|---|---|---|---|
+| 0.8 | **+3.946** ± 0.058 | [+3.831, +4.060] | +3.947 | [+3.834, +4.055] | 1.000 | 45.73 | −1.10 |
+| 1.0 | **+0.229** ± 0.044 | [+0.143, +0.315] | +0.231 | [+0.151, +0.316] | 1.001 | 40.95 | −0.16 |
+| 1.2 | **−2.730** ± 0.056 | [−2.840, −2.620] | −2.728 | [−2.827, −2.623] | 1.003 | 38.90 | −0.06 |
+
+`kernel_fit/`'s simulation-matching pooled fit gave +3.98 / +0.24 / −2.50 — the likelihood fit reproduces
+it to within 0.23 per s at every gain, with intervals.
+
+### Sampler and MLE-vs-posterior checks
+
+Max R-hat over all 63 Bayesian fits and all three parameters: **1.0036** (≤ 1.01); min ESS 1058.
+|MLE − posterior mean| / SE ≤ 1 in **55/60** cells. The five exceptions are all at gain 0.8 (seeds 54,
+46, 53, 60, 51; worst 2.89 SE for seed 54) and are entirely the a_bias prior: where g is strongly positive
+a_bias only enters as a_bias·ρ^T ≈ 0.03·a_bias, the MLE runs away (seed 54: a_bias = −12.5 ± 2.9) and
+N(0, 1) shrinks it (to −3.9), moving g from +6.03 to +5.23. Signs of g agree in 60/60 cells.
+
+### Comparison with the landscape and with Fig 1F
+
+| gain | landscape g (= −drift slope; approximate, 3 networks) | route-1 pooled g [95 %] |
+|---|---|---|
+| 0.8 | +4.3 | +3.946 [+3.831, +4.060] |
+| 1.0 | −1.6 | +0.229 [+0.143, +0.315] |
+| 1.2 | −6.2 | −2.730 [−2.840, −2.620] |
+
+Same ordering and the same sign change; the fitted magnitudes are smaller at the extremes (the linear OU
+under-reports the network's saturating repulsion at gain 1.2, as `kernel_fit/RESULTS.md` noted), and at
+gain 1.0 the fit is slightly leaky where the 3-network landscape estimate is slightly unstable.
+Zero crossing of the fitted g against gain (piecewise-linear interpolation): **pooled f₀ = 1.0155**
+(posterior mean 1.0156), per network median **1.0227** [IQR 0.980, 1.055], mean 1.021 ± 0.011 (n = 20).
+Fig 1F's kernel-slope crossing is f = 1.016; the landscape curvature crossing is 0.94 ± 0.07.
+
+### Kernel and psychometric reproduction (`output/track_b/kernel_reproduction*.csv`, `kernel_reproduction.png`)
+
+Choices simulated from the fitted parameters on the real evidence streams with fresh noise; kernels
+computed with `kernel_fit/fit_ou_kernel.py::kernel` verbatim (8 bins, L1-normalised).
+
+| gain | pooled kernel slope, network | model (pooled fit) | model (per-network fits) | accuracy network / model |
+|---|---|---|---|---|
+| 0.8 | +0.0392 | +0.0409 | +0.0392 | 0.866 / 0.865 |
+| 1.0 | +0.0021 | +0.0024 | +0.0019 | 0.887 / 0.888 |
+| 1.2 | −0.0261 | −0.0308 | −0.0306 | 0.869 / 0.869 |
+
+Per network, model slope vs network slope: 0.896 × network + 0.0041 (r = 0.940) at gain 0.8,
+1.061 × (r = 0.980) at 1.0, 1.160 × (r = 0.948) at 1.2 — i.e. the unbounded model slightly over-produces
+primacy at gain 1.2, which is where the sticky bound matters (route 2).
+Fitted g against the network's own kernel slope: **r = 0.996** over the 60 fits (g = 105.8 × slope − 0.061);
+per gain r = 0.981 / 0.995 / 0.970.
+
+### Recovery, route 1 (`output/track_b/recovery_route1.csv`, `recovery.png`)
+
+5 networks (42, 46, 51, 58, 61) × 3 gains × 2 truths × 2 repetitions = 60 refits on the real evidence.
+
+| truth | gain | mean true g | mean recovered g | bias | RMSE | mean SE | sign correct | 95 % covers truth |
+|---|---|---|---|---|---|---|---|---|
+| fitted | 0.8 | +3.681 | +3.738 | +0.057 | 0.299 | 0.249 | 10/10 | 9/10 |
+| fitted | 1.0 | −0.025 | −0.074 | −0.050 | 0.173 | 0.190 | 10/10 | 9/10 |
+| fitted | 1.2 | −2.784 | −2.840 | −0.056 | 0.207 | 0.234 | 10/10 | 10/10 |
+| landscape | 0.8 | +4.300 | +4.360 | +0.060 | 0.223 | 0.275 | 10/10 | 10/10 |
+| landscape | 1.0 | −1.600 | −1.610 | −0.010 | 0.141 | 0.200 | 10/10 | 10/10 |
+| landscape | 1.2 | −6.200 | −6.214 | −0.014 | 0.322 | 0.336 | 10/10 | 10/10 |
+
+60/60 signs correct, 56/60 intervals cover the truth (nominal 57), |bias| ≤ 0.06 per s everywhere.
+(The gain-1.0 "sign correct" entries are weak evidence: the true values there are near zero.)
+
+### Sensitivity to the number of trials (`output/track_b/sensitivity_ntrials.csv`)
+
+1000 vs 2000 trials per network: median g +4.25 / +0.39 / −2.66 vs +4.13 / +0.32 / −2.63; per-network
+r = 0.975 / 0.962 / 0.955; mean |Δg| = 0.19 / 0.21 / 0.29; SEs grow by ×1.43 (≈ √2); 60/60 signs
+unchanged; still 20/20 intervals excluding 0 at gains 0.8 and 1.2 (11/20 at gain 1.0, vs 15/20).

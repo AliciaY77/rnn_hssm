@@ -258,3 +258,36 @@ gives **g < 0 (unstable)** with the 94 % HDI excluding zero at k = 10, while the
 gives g at the leaky ceiling. This is the sign that the three original issue-#1 fits reported, and it is
 an artefact of the collapsing bound (which manufactures a long, flat RT tail), not a property of the
 network. It also shows the corrected pipeline is not hard-wired to return g > 0.
+
+## 9. Conclusions
+
+1. **The corrected pipeline works.** 12 pooled fits, 120 per-network fits, 6 recovery fits, 2 appendix
+   fits: R-hat ≤ 1.01, ESS_bulk ≥ 400 and 0 divergences in every single one. The three failures of the
+   original issue-#1 fits (≈100 % divergences, t absorbing the 0.3 s offset, drift at the +2 edge) are all
+   gone: t is fixed, the stretch puts a and v in the interior, and the lapse mixture is off.
+2. **The fits describe RT and choice well.** Median absolute RT-quantile error 6.5 / 1.6 / 0.8 ms at gains
+   0.8 / 1.0 / 1.2, accuracy within 0.021 everywhere, omissions within 1.6 points.
+3. **They say "leaky" at every gain and show no transition.** g_native = +9.98 / +9.96 / +9.21 per s
+   pooled at k = 10; 120/120 per-network fits give g > 0, with the 94 % HDI excluding zero in 118/120.
+   Theory predicts +4.3 / −1.6 / −6.2. **This is the outcome the issue expected.**
+4. **The magnitude is not identified.** g sits on the LAN's +1 ceiling at gains 0.8 and 1.0 at every
+   stretch from k = 8 to k = 24 (edge mass 0.94–1.00), so g_native = k is a boundary artefact; a_native
+   and v_native are stable across the same range, g_native is not. Raising k — the plan's remedy — does
+   not fix it. Report the sign, not the number.
+5. **The pipeline could have seen the transition.** With g set to theory the same pipeline returns g < 0
+   at gains 1.0 and 1.2, with the HDI excluding zero at 1.2 (sign recovered 6/6). The bias is shrinkage
+   toward zero, and the truncation bias documented in #1 also pushes toward "unstable", so both known
+   biases work *against* the leaky result actually obtained.
+6. **The decisive check fails as predicted.** Driven by the networks' own evidence streams, the fitted OU
+   gives recency at all three gains without a bound (slopes +0.068 / +0.068 / +0.066 against the networks'
+   +0.039 / +0.002 / −0.026) and primacy at all three gains with the fitted bound (−0.041 / −0.057 /
+   −0.064). The ordering the networks show is absent in both, and what little ordering variant (a) has
+   comes from a_native, not from g.
+7. **The Weibull collapse is a confound, and it flips the sign.** The same network at the same gain gives
+   g_native = −2.19 [−2.78, −1.54] on the collapsing-bound readout and g on the leaky ceiling on the
+   constant-bound readout.
+
+**Bottom line for the report: standard RT-and-choice fitting of a constant-bound OU to these networks
+returns a converged, well-fitting model whose leak parameter is positive at every gain, is not identified
+in magnitude, and reproduces neither the psychophysical kernel nor its ordering across gain. Track B's
+positive result is therefore not something Track A could have found.**

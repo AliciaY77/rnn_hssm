@@ -1,9 +1,11 @@
 # Track A (issue #3) — corrected HSSM OU fits to the constant-bound RNN behaviour
 
 Branch `track-a-hssm-ou-corrected` (from `ou-round2-base`). Code in `track_a/`, tables and figures in
-`output/track_a/` (netcdfs stay on Oscar under the same path). Oscar jobs: 6613431 (timing), 6613593
-(12 pooled), 6613594 (120 per-network), 6613838 (appendix), 6613948 (hierarchical smoke), 6614115
-(RT-PPC smoke), 6614157 (hierarchical), 6614167 (recovery), 6614186 (k = 20 / 24 pooled).
+`output/track_a/` (netcdfs stay on Oscar under the same path). Oscar jobs: 6613431 (timing);
+6613460 / 6613461 (first pooled and per-network arrays, cancelled — see §0); 6613593 (12 pooled),
+6613594 (120 per-network), 6613838 (appendix), 6613884 / 6613948 (hierarchical smokes), 6614115 (RT-PPC
+smoke), 6614157 (hierarchical), 6614167 (recovery), 6614186 (k = 20 / 24 pooled), 6614551 (RT PPC, died in
+ssms), 6614751 / 6614775 / 6614808 (ssms crash diagnostics), 6614865 (engine cross-check).
 
 **Sign convention, stated once and repeated in every table: ssm-simulators and HSSM implement
 `dx = (v − g·x) dt + dW`, so `g > 0` is LEAKY (recency) and `g < 0` is UNSTABLE / attractive (primacy).**
@@ -38,6 +40,9 @@ gives the fastest trial a decision time of exactly zero; every one of the first 
 fit on that guard. An RT recorded as 6 ms means the crossing fell in (5, 6] ms, so t is fixed one **native**
 millisecond (the data's own time step) lower: `t = 0.3 + k · (min(rt_native) − 0.001)`, i.e.
 **t = 0.35 / 0.35 / 0.34 s at k = 10** (t_native = 5 / 5 / 4 ms). No RT is at or below t in any fit.
+The first two array submissions (jobs 6613460, 12 pooled tasks, and 6613461, 120 per-network tasks) all
+exited on that guard within 20 s; 6613461 was cancelled after 25 of its tasks were still queued, and both
+were resubmitted as 6613593 and 6613594 once t was fixed. No result in this note comes from those runs.
 
 ## 1. Headline: every fit converges, every fit says LEAKY, and g is not identified
 
@@ -54,36 +59,45 @@ each on 4 cores.** Headline at the plan's k = 10 (g > 0 = leaky):
 Theory, same sign convention, predicts g_native = **+4.3 / −1.6 / −6.2**. The fits give **+10.0 / +10.0 /
 +9.2**: leaky at every gain, no zero crossing, and the 94 % HDIs exclude the predicted values by 6–16 per s.
 
-**But g is on the box edge, so those magnitudes are not estimates.** The `g` posterior is pressed against
-the LAN's +1 ceiling: 100 % / 99 % of the draws lie within 0.02 of it at gains 0.8 and 1.0. The plan's
-remedy was to raise k, which lowers g by a factor k. It does not work: the posterior re-pins at every
-stretch tested, so g_native simply tracks the ceiling k · 1.
+**But g is on the box edge at two of the three gains, so those magnitudes are not estimates.** The `g`
+posterior is pressed against the LAN's +1 ceiling: 100 % / 99 % of the draws lie within 0.02 of it at gains
+0.8 and 1.0. The plan's remedy was to raise k, which lowers g by a factor k. It was run out to k = 24
+(jobs 6613593 and 6614186, 18 pooled fits, all R-hat 1.00, ESS_bulk ≥ 1661, 0 divergences):
 
-| k | t fixed (0.8/1.0/1.2) | g_native at gain 0.8 (edge mass) | gain 1.0 | gain 1.2 | a_native (0.8/1.0/1.2) | v_native(0.15) |
-|---|---|---|---|---|---|---|
-| 8 | 0.34/0.34/0.33 | +7.98 (**1.00**) | +7.97 (**1.00**) | +7.58 (0.11) | 0.392/0.332/0.296 | 3.74/4.03/4.07 |
-| 10 | 0.35/0.35/0.34 | +9.98 (**1.00**) | +9.96 (**0.99**) | +9.21 (0.01) | 0.380/0.324/0.291 | 3.82/4.09/4.10 |
-| 12 | 0.36/0.36/0.35 | +11.98 (**1.00**) | +11.94 (**0.98**) | +10.68 (0.00) | 0.370/0.316/0.286 | 3.91/4.14/4.13 |
-| 16 | 0.38/0.38/0.36 | +15.98 (**1.00**) | +15.87 (**0.94**) | +12.93 (0.00) | 0.353/0.303/0.280 | 4.07/4.24/4.17 |
-| 20 | 0.40/0.40/0.38 | +19.98 (**1.00**) | *see note* | *see note* | 0.340/–/– | 0.94 (stretched) |
-| 24 | 0.42/0.42/0.40 | +24.00 (**1.00**) | +23.95 (**1.00**) | *see note* | 0.330/0.283/– | 0.88/0.91/– |
+| k | g_native 0.8 (edge mass) | g_native 1.0 (edge) | g_native 1.2 (edge) | a_native (0.8/1.0/1.2) | v_native(0.15) (0.8/1.0/1.2) |
+|---|---|---|---|---|---|
+| 8 | +7.98 (**1.00**) | +7.97 (**1.00**) | +7.58 (0.11) | 0.392 / 0.332 / 0.296 | 3.74 / 4.03 / 4.07 |
+| 10 | +9.98 (**1.00**) | +9.96 (**0.99**) | +9.21 (0.01) | 0.380 / 0.324 / 0.291 | 3.82 / 4.09 / 4.10 |
+| 12 | +11.98 (**1.00**) | +11.94 (**0.98**) | +10.68 (0.00) | 0.370 / 0.316 / 0.286 | 3.91 / 4.14 / 4.13 |
+| 16 | +15.98 (**1.00**) | +15.87 (**0.94**) | +12.93 (0.00) | 0.353 / 0.303 / 0.280 | 4.07 / 4.24 / 4.17 |
+| 20 | +19.98 (**1.00**) | +19.88 (**0.97**) | +14.02 (0.00) | 0.340 / 0.292 / 0.278 | 4.19 / 4.34 / 4.19 |
+| 24 | +24.00 (**1.00**) | +23.95 (**1.00**) | **+14.66** (0.00) | 0.330 / 0.283 / **0.277** | 4.29 / 4.43 / **4.21** |
 
-Read that column by column: **a_native is stable to 6–13 % and v_native(0.15) to 3–9 % across a 3-fold
-range of k, but g_native grows in proportion to k.** The time rescaling is exact for the process
-(RT × k ⇔ g → g/k, a → a√k, v → v/√k), so a well-identified fit must return the same native values at
-every k. a and v do; g does not. The likelihood is monotone in g up to the box edge at gains 0.8 and 1.0:
-however much leak the box allows, the fit takes all of it. Gain 1.2 leaves the edge from k = 10 on
-(edge mass 0.01 → 0.00) but its g_native still climbs with k (+7.6 → +12.9), so it is not identified
-either, only less badly.
+Time rescaling is exact for the process (RT × k ⇔ g → g/k, a → a√k, v → v/√k), so a well-identified fit
+must return the same native values at every k. The sweep separates two situations:
+
+* **Gains 0.8 and 1.0: g is not identified.** The posterior re-pins on the ceiling at every stretch from
+  k = 8 to k = 24 (edge mass 0.94–1.00), so g_native = k·1 is a boundary artefact, and a_native drifts with
+  it (0.392 → 0.330 and 0.332 → 0.283, i.e. 16 %). All that can be read off is **g_native > 24 per s**.
+  The likelihood is monotone in g up to whatever bound it is given.
+* **Gain 1.2: g leaves the ceiling from k = 10 and converges.** g_native = +7.58, +9.21, +10.68, +12.93,
+  +14.02, **+14.66 [+13.51, +15.82] at k = 24** — successive increments +1.63, +1.47, +2.25, +1.09, +0.64,
+  i.e. saturating near +15 per s. Its a_native converges in step (0.296 → 0.278 → 0.277, the last three
+  values within 1 %) and v_native(0.15) sits at 4.2. So the fit becomes stretch-consistent exactly when g
+  comes off the edge, which confirms that the non-invariance at the other two gains is the ceiling and not
+  an error in the rescaling.
+
+Either way the sign is unambiguous and the same at every gain: **leaky, by +14.7 to more than +24 per s,
+where theory predicts +4.3 / −1.6 / −6.2.** The one gain whose leak is identified (1.2) is the one theory
+says should be the most *unstable*, and it comes out at +14.7 per s.
 
 This is not an artefact of the LAN alone: the exact-simulator random search in `feasibility/RESULTS.md`
 §1 reports the same thing — "every good boxed fit has g at or near +1 (leaky) at all gains".
 
-Why the likelihood wants unbounded leak: the constant-bound RT distributions have a 6 ms minimum and a
+Why the likelihood wants so much leak: the constant-bound RT distributions have a 6 ms minimum and a
 750 ms maximum with q90/q50 ≈ 2.8 (table above). With t fixed at the minimum, the only way a one-boundary
 OU produces both the very fast leading edge and the long flat tail is strong mean reversion, which creates
-a quasi-stationary population that leaks across the bound slowly. More leak always helps, so g runs to
-whatever bound it is given.
+a quasi-stationary population that leaks across the bound slowly.
 
 ## 2. Per-network fits (120 fits, job 6613594): 20/20 networks leaky at every gain
 
@@ -241,6 +255,34 @@ conservative. The omission fractions are small at two of the three gains (3.40 %
 and the gain with the largest truncation (0.8) is the one with the *most* leaky estimate — the opposite
 of what the truncation bias would produce.
 
+## 8. Hierarchical model (job 6614157): it converges, and it says the same thing
+
+`track_a/fit_hssm_ou.py --hier`, one job per gain, n = 20 000 stratified by seed, k = 10, 64–87 min each.
+Formulas `v ~ 1 + coherence_signed + (1|seed)`, `a ~ 1 + (1|seed)`, `g ~ 1 + (1|seed)`.
+
+**Deviation, recorded here.** HSSM cannot put a regression on a doubly bounded parameter with an identity
+link, so the hierarchical fits use `link_settings="log_logit"`, which places a **generalized logit** on
+v, a and g. The sampled `*_Intercept` are therefore on the logit scale and every reported quantity is the
+inverse link, `lo + (hi − lo)/(1 + exp(−η))`; the first smoke run, before this was noticed, printed
+g_native = +7.56 per s and a_native = −0.297 (impossible). HSSM's own default Normal(0, 0.25) on every
+coefficient also crushed the coherence slope (v(0.15) = 0.62 against 1.26 pooled), so the priors are
+Normal(0, 1.5) on the three intercepts and Normal(0, 30) on the coherence slope, both on the logit scale.
+Under this link v(coh) is not linear in coherence, so the hierarchical fits are reported but the PPCs of
+record use the pooled fits.
+
+| gain | population g [94 % HDI] | **g_native per s** [94 % HDI] | a_native | v(0.15) | sd(g) by seed (logit) | sd(a) | sd(v) | R-hat max | ESS_bulk min | div | edge mass g |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.8 | 0.991 [0.981, 0.999] | **+9.91** [+9.82, +9.99] | 0.381 | 1.181 | 0.255 | 0.077 | 0.179 | 1.01 | **222** | 0/4000 | 0.963 |
+| 1.0 | 0.980 [0.959, 0.998] | **+9.80** [+9.59, +9.98] | 0.324 | 1.227 | 0.254 | 0.064 | 0.147 | 1.01 | 715 | 0/4000 | 0.562 |
+| 1.2 | 0.902 [0.837, 0.960] | **+9.02** [+8.37, +9.60] | 0.292 | 1.220 | 0.241 | 0.063 | 0.134 | 1.01 | 855 | 0/4000 | 0.004 |
+
+All three sampled: R-hat ≤ 1.01 and 0 divergences everywhere. **Gain 0.8 misses the ESS_bulk ≥ 400 gate**
+(222), and the shortfall is on `v_Intercept` / the quantities derived from it (ESS 222–254); `g_Intercept`
+itself has ESS 4560 and R-hat 1.00 at that gain, so the g conclusion is not affected. The population means
+reproduce the pooled fits to within 0.7–2 % (g_native +9.91 / +9.80 / +9.02 against +9.98 / +9.96 / +9.21),
+and g is again on the ceiling at gains 0.8 and 1.0 (edge mass 0.96 and 0.56).
+The 60 per-network fits of §2 remain the primary evidence about between-network spread.
+
 ## 9. Appendix: the original Weibull-collapsing-bound data (job 6613838)
 
 `track_a/make_weibull_appendix.py` reformats the stored Weibull outcome from the SIM-A per-trial cache
@@ -261,8 +303,8 @@ network. It also shows the corrected pipeline is not hard-wired to return g > 0.
 
 ## 10. Conclusions
 
-1. **The corrected pipeline works.** 12 pooled fits, 120 per-network fits, 6 recovery fits, 2 appendix
-   fits: R-hat ≤ 1.01, ESS_bulk ≥ 400 and 0 divergences in every single one. The three failures of the
+1. **The corrected pipeline works.** 18 pooled fits, 120 per-network fits, 3 hierarchical fits, 6 recovery
+   fits, 2 appendix fits: R-hat ≤ 1.01, ESS_bulk ≥ 400 and 0 divergences in every single one. The three failures of the
    original issue-#1 fits (≈100 % divergences, t absorbing the 0.3 s offset, drift at the +2 edge) are all
    gone: t is fixed, the stretch puts a and v in the interior, and the lapse mixture is off.
 2. **The fits describe RT and choice well.** Median absolute RT-quantile error 6.5 / 1.6 / 0.8 ms at gains
@@ -270,10 +312,11 @@ network. It also shows the corrected pipeline is not hard-wired to return g > 0.
 3. **They say "leaky" at every gain and show no transition.** g_native = +9.98 / +9.96 / +9.21 per s
    pooled at k = 10; 120/120 per-network fits give g > 0, with the 94 % HDI excluding zero in 118/120.
    Theory predicts +4.3 / −1.6 / −6.2. **This is the outcome the issue expected.**
-4. **The magnitude is not identified.** g sits on the LAN's +1 ceiling at gains 0.8 and 1.0 at every
-   stretch from k = 8 to k = 24 (edge mass 0.94–1.00), so g_native = k is a boundary artefact; a_native
-   and v_native are stable across the same range, g_native is not. Raising k — the plan's remedy — does
-   not fix it. Report the sign, not the number.
+4. **The magnitude is identified at only one gain.** g sits on the LAN's +1 ceiling at gains 0.8 and 1.0
+   at every stretch from k = 8 to k = 24 (edge mass 0.94–1.00), so g_native = k·1 there is a boundary
+   artefact and all that can be said is g_native > 24 per s. Gain 1.2 comes off the edge from k = 10 and
+   converges to **g_native = +14.66 [+13.51, +15.82] per s at k = 24**, with a_native stable to 1 % over
+   the last three stretches. Raising k — the plan's remedy — fixes gain 1.2 and not the other two.
 5. **The pipeline could have seen the transition.** With g set to theory the same pipeline returns g < 0
    at gains 1.0 and 1.2, with the HDI excluding zero at 1.2 (sign recovered 6/6). The bias is shrinkage
    toward zero, and the truncation bias documented in #1 also pushes toward "unstable", so both known
@@ -283,11 +326,14 @@ network. It also shows the corrected pipeline is not hard-wired to return g > 0.
    +0.039 / +0.002 / −0.026) and primacy at all three gains with the fitted bound (−0.041 / −0.057 /
    −0.064). The ordering the networks show is absent in both, and what little ordering variant (a) has
    comes from a_native, not from g.
-7. **The Weibull collapse is a confound, and it flips the sign.** The same network at the same gain gives
+7. **The hierarchical model converges and agrees**: population g_native = +9.91 / +9.80 / +9.02 per s at
+   k = 10, R-hat ≤ 1.01, 0 divergences, within 2 % of the pooled fits (gain 0.8 misses the ESS gate at 222,
+   on `v_Intercept`, not on g).
+8. **The Weibull collapse is a confound, and it flips the sign.** The same network at the same gain gives
    g_native = −2.19 [−2.78, −1.54] on the collapsing-bound readout and g on the leaky ceiling on the
    constant-bound readout.
 
-**Bottom line for the report: standard RT-and-choice fitting of a constant-bound OU to these networks
+9. **Bottom line for the report: standard RT-and-choice fitting of a constant-bound OU to these networks
 returns a converged, well-fitting model whose leak parameter is positive at every gain, is not identified
 in magnitude, and reproduces neither the psychophysical kernel nor its ordering across gain. Track B's
-positive result is therefore not something Track A could have found.**
+   positive result is therefore not something Track A could have found.**

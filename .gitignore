@@ -19,3 +19,5 @@ output/recovery/*.nc
 !data/data_raw/rnn_ddm_nxx1_s42_g1.0.parquet
 !output/fixed_bound/
 !output/feasibility/
+!output/kernel_fit/
+output/kernel_fit/export.log

@@ -105,7 +105,7 @@ pinned against the leaky ceiling, none crosses zero, and the span (9.81 → 9.44
 is 3 % of the span theory predicts (+4.3 → −6.2, i.e. 10.5 per s). The ordering also tracks a_native
 (0.376 → 0.288), i.e. the bound, not the leak.
 
-## 3. The decisive check: the posterior-predictive psychophysical kernel
+## 3. The decisive check: method for the posterior-predictive psychophysical kernel
 
 `track_a/ppc_kernel.py`, run locally with `/opt/homebrew/anaconda3/bin/python`; outputs
 `output/track_a/kernel_ppc*.csv` and `kernel_ppc*.png`. The fitted parameters are converted to native
@@ -200,17 +200,7 @@ For comparison, the evidence-conditioned fit of `kernel_fit/RESULTS.md`, which i
 reproduces it bin by bin with g = +3.98 / +0.24 / −2.50 per s and B = 2.6 / 2.1 / 4.9. The HSSM fit's
 bound is 7–17× smaller and its leak 2.5–40× larger.
 
-## 6. Truncation caveat (required by the issue)
-
-The data are horizon-truncated at 750 ms native (7.8 s stretched, = 0.3 + k·0.75 — the issue says 7.5 s,
-which omits the 0.3 s offset) and HSSM has no censored likelihood. The recovery study of issue #1 showed
-that fitting horizon-truncated data with an untruncated likelihood **biases g toward "unstable"**
-(g < 0). The bias therefore runs *against* the outcome found here, which makes "leaky at every gain"
-conservative. The omission fractions are small at two of the three gains (3.40 % / 0.30 % / 0.03 %),
-and the gain with the largest truncation (0.8) is the one with the *most* leaky estimate — the opposite
-of what the truncation bias would produce.
-
-## 6b. Recovery at k = 10 (job 6614167): the pipeline *can* see instability — the data never show it
+## 6. Recovery at k = 10 (job 6614167): the pipeline *can* see instability — the data never show it
 
 `track_a/recover.py`, `output/track_a/recovery_table.csv`. Six datasets of 20 000 trials each, simulated
 from the pooled posterior-mean parameters with g replaced by the theoretical value or by the fitted value,
@@ -241,7 +231,17 @@ same box-uniform priors, 4 × 1000/1000, target_accept 0.95). All six: R-hat 1.0
 
 The one dataset whose HDI covers the truth is the only one whose true g is comfortably interior (+0.43).
 
-## 7. Appendix: the original Weibull-collapsing-bound data (job 6613838)
+## 7. Truncation caveat (required by the issue)
+
+The data are horizon-truncated at 750 ms native (7.8 s stretched, = 0.3 + k·0.75 — the issue says 7.5 s,
+which omits the 0.3 s offset) and HSSM has no censored likelihood. The recovery study of issue #1 showed
+that fitting horizon-truncated data with an untruncated likelihood **biases g toward "unstable"**
+(g < 0). The bias therefore runs *against* the outcome found here, which makes "leaky at every gain"
+conservative. The omission fractions are small at two of the three gains (3.40 % / 0.30 % / 0.03 %),
+and the gain with the largest truncation (0.8) is the one with the *most* leaky estimate — the opposite
+of what the truncation bias would produce.
+
+## 9. Appendix: the original Weibull-collapsing-bound data (job 6613838)
 
 `track_a/make_weibull_appendix.py` reformats the stored Weibull outcome from the SIM-A per-trial cache
 (`bounded_rt`, `choice`, `crossed`) into the same HSSM-ready columns; gain 1.0, seed 42, 2000 trials,
@@ -259,7 +259,7 @@ gives g at the leaky ceiling. This is the sign that the three original issue-#1 
 an artefact of the collapsing bound (which manufactures a long, flat RT tail), not a property of the
 network. It also shows the corrected pipeline is not hard-wired to return g > 0.
 
-## 9. Conclusions
+## 10. Conclusions
 
 1. **The corrected pipeline works.** 12 pooled fits, 120 per-network fits, 6 recovery fits, 2 appendix
    fits: R-hat ≤ 1.01, ESS_bulk ≥ 400 and 0 divergences in every single one. The three failures of the

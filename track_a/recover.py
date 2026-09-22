@@ -50,15 +50,26 @@ def main():
     ap.add_argument("--chains", type=int, default=4)
     ap.add_argument("--rng", type=int, default=0)
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--params-json", type=str, default="",
+                    help="JSON with {v_Intercept, v_coherence_signed, a, z, g, t_fixed, source} to use as "
+                         "the generating parameters instead of the pooled fit's <tag>_meta.json")
     a = ap.parse_args()
     k = a.k
     tag = f"recover_g{a.gain}_k{k:g}_{a.g_source}" + ("_smoke" if a.smoke else "")
     print(f"=== {tag} ===", flush=True)
 
-    src = OUT / f"g{a.gain}_k{k:g}_b{a.bound}_pooled_meta.json"
-    meta_src = json.loads(src.read_text())
-    pm = meta_src["posterior_mean"]
-    t_fixed = meta_src["t_fixed"]
+    if a.params_json:
+        src = pathlib.Path(a.params_json)
+        meta_src = json.loads(src.read_text())
+        pm = meta_src
+        t_fixed = meta_src["t_fixed"]
+    else:
+        src = OUT / f"g{a.gain}_k{k:g}_b{a.bound}_pooled_meta.json"
+        meta_src = json.loads(src.read_text())
+        pm = meta_src["posterior_mean"]
+        t_fixed = meta_src["t_fixed"]
+    print("generating parameters from", src, "|", meta_src.get("source", "pooled fit posterior mean"),
+          flush=True)
     g_true = (G_THEORY_NATIVE[a.gain] / k) if a.g_source == "theory" else pm["g"]
     theta0 = dict(v_Intercept=pm["v_Intercept"], v_coherence_signed=pm["v_coherence_signed"],
                   a=pm["a"], z=pm["z"], g=g_true, t=t_fixed)
@@ -126,6 +137,7 @@ def main():
           flush=True)
 
     meta = dict(tag=tag, gain=a.gain, k=k, g_source=a.g_source, generating=theta0,
+                generating_from=str(src), generating_note=meta_src.get("source", "pooled fit posterior mean"),
                 g_true=g_true, g_true_native=g_true * k, g_mean=gm, g_native_mean=gm * k,
                 g_hdi3=glo, g_hdi97=ghi, g_native_hdi3=glo * k, g_native_hdi97=ghi * k,
                 sign_recovered=bool(np.sign(gm) == np.sign(g_true)),

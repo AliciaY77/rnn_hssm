@@ -1,0 +1,30 @@
+{
+  "cell": 10,
+  "g_true": 0.0,
+  "a_true": 1.5,
+  "n": 1000,
+  "seed": 1010,
+  "tag": "g+0.0_a1.5_n1000_nolapse",
+  "smoke": false,
+  "draws": 1000,
+  "tune": 1000,
+  "chains": 4,
+  "n_divergences": 2,
+  "total_draws": 4000,
+  "sampling_minutes": 1.736112101872762,
+  "deadline_s": 4.5,
+  "no_lapse": true,
+  "no_deadline": false,
+  "variant": "_nolapse",
+  "fixed": {
+    "v": 0.0,
+    "z": 0.5,
+    "t": 0.1
+  },
+  "hssm_version": "0.2.4",
+  "n_requested": 1000,
+  "n_not_terminated": 0,
+  "n_past_deadline": 131,
+  "n_kept": 869,
+  "frac_dropped": 0.131
+}

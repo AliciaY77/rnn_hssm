@@ -34,6 +34,22 @@ def sim_choice(rel, g, v, B, a_bias, seed):
     return (aT[0] > 0).astype(int)
 
 
+def _prof_interval(g, nll, g_hat, nll_hat, drop=1.92):
+    """1.92-unit-drop interval read off the profile by linear interpolation."""
+    f = nll - nll_hat
+    out = []
+    for side in (-1, +1):
+        sel = (g <= g_hat) if side < 0 else (g >= g_hat)
+        gg, ff = (g[sel][::-1], f[sel][::-1]) if side < 0 else (g[sel], f[sel])
+        val = gg[-1] if len(gg) else np.nan
+        for i in range(1, len(gg)):
+            if ff[i] >= drop:
+                val = gg[i - 1] + (gg[i] - gg[i - 1]) * (drop - ff[i - 1]) / (ff[i] - ff[i - 1])
+                break
+        out.append(float(val))
+    return out[0], out[1]
+
+
 def load_bounded(dirname="bounded"):
     """Every route-2 per-fit JSON as one row, plus flags derived from the stored profile."""
     rows = []
@@ -43,9 +59,30 @@ def load_bounded(dirname="bounded"):
         if prof:
             g = np.array([q["g"] for q in prof]); nll = np.array([q["nll"] for q in prof])
             j["prof_min_g"] = float(g.min()); j["prof_max_g"] = float(g.max())
+            j["prof_better"] = float(min(0.0, nll.min() - j["nll"]))
+            j["g_raw"], j["nll_raw"] = j["g"], j["nll"]
+            # the profile re-optimises (v, B, a_bias) at fixed g, so a profile point below the
+            # Nelder-Mead optimum is a better optimum: take the profile minimum (parabolically
+            # refined) as the MLE and read the 95 % interval off the same curve.
+            if j["prof_better"] < -0.05:
+                k = int(np.argmin(nll))
+                if 0 < k < len(g) - 1:
+                    y0, y1, y2 = nll[k - 1], nll[k], nll[k + 1]
+                    den = (y0 - 2 * y1 + y2)
+                    dx = 0.5 * (y0 - y2) / den if den > 0 else 0.0
+                    j["g"] = float(g[k] + dx * (g[k + 1] - g[k]))
+                    j["nll"] = float(y1 - 0.25 * (y0 - y2) * dx)
+                else:
+                    j["g"], j["nll"] = float(g[k]), float(nll[k])
+                for nm, q in zip(("v", "B", "a_bias"), ("v", "B", "a_bias")):
+                    j[nm] = float(prof[k][q])
+                j["refined_from_profile"] = True
+                lo, hi = _prof_interval(g, nll, j["g"], j["nll"])
+                j["g_lo"], j["g_hi"] = lo, hi
+            else:
+                j["refined_from_profile"] = False
             j["prof_drop_lo"] = float(nll[0] - j["nll"]); j["prof_drop_hi"] = float(nll[-1] - j["nll"])
             j["prof_edge"] = bool(nll[0] - j["nll"] < 1.92 or nll[-1] - j["nll"] < 1.92)
-            j["prof_better"] = float(min(0.0, nll.min() - j["nll"]))
         j["file"] = f.name
         rows.append(j)
     return pd.DataFrame(rows) if rows else pd.DataFrame()

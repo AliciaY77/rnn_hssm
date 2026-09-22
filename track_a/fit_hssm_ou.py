@@ -163,6 +163,31 @@ def load_data(args):
     return df, meta, rt_min_native
 
 
+def inv_gen_logit(eta, lo, hi):
+    """Inverse of HSSM's generalized logit link: eta (unbounded) -> the parameter's own (lo, hi) scale.
+
+    `link_settings="log_logit"` puts a generalized logit on every doubly bounded parameter (v, a, g here),
+    so the sampled *_Intercept and the group offsets live on the logit scale and must be inverted before
+    anything is reported in model units or converted to native units.
+    """
+    return lo + (hi - lo) / (1.0 + np.exp(-np.asarray(eta, dtype=np.float64)))
+
+
+def hier_priors():
+    """Priors on the generalized-logit scale for the hierarchical fit.
+
+    HSSM's defaults are Normal(0, 0.25) for every coefficient, which on the logit scale of v in (-2, 2)
+    forces v(0.15) to about half the pooled estimate: the coherence slope needs b1 ~ 10 on that scale
+    (v(0.15) = 1.26 <=> logit((1.26+2)/4) = 1.48 = b1 * 0.15). These are wide but proper.
+    """
+    return {
+        "v": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.5},
+              "coherence_signed": {"name": "Normal", "mu": 0.0, "sigma": 30.0}},
+        "a": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.5}},
+        "g": {"Intercept": {"name": "Normal", "mu": 0.0, "sigma": 1.5}},
+    }
+
+
 def edge_mass(samples, lo, hi, tol=EDGE_TOL):
     s = np.asarray(samples).ravel()
     return float(np.mean((s <= lo + tol) | (s >= hi - tol)))
@@ -196,9 +221,13 @@ def main():
 
     if args.hier:
         priors = None
+        hp = None if args.default_priors else hier_priors()
         include = [dict(name="v", formula="v ~ 1 + coherence_signed + (1|seed)"),
                    dict(name="a", formula="a ~ 1 + (1|seed)"),
                    dict(name="g", formula="g ~ 1 + (1|seed)")]
+        if hp is not None:
+            for spec in include:
+                spec["prior"] = hp[spec["name"]]
         kw = dict(link_settings="log_logit")
     else:
         priors = None if args.default_priors else box_uniform_priors()
@@ -235,17 +264,26 @@ def main():
     summ = az.summary(idata, var_names=params, hdi_prob=0.94).reset_index().rename(columns={"index": "param"})
 
     # derived drifts and native-unit versions, with the same summary columns
-    b0 = post["v_Intercept"].values
-    b1 = post["v_coherence_signed"].values if "v_coherence_signed" in post else np.zeros_like(b0)
-    g_post = post["g_Intercept"].values if "g_Intercept" in post else post["g"].values
-    a_post = post["a_Intercept"].values if "a_Intercept" in post else post["a"].values
+    eta0 = post["v_Intercept"].values
+    eta1 = post["v_coherence_signed"].values if "v_coherence_signed" in post else np.zeros_like(eta0)
+    if args.hier:   # generalized logit on v, a, g -> invert before reporting anything in model units
+        v_at = lambda c: inv_gen_logit(eta0 + c * eta1, *BOX["v"])
+        g_post = inv_gen_logit(post["g_Intercept"].values, *BOX["g"])
+        a_post = inv_gen_logit(post["a_Intercept"].values, *BOX["a"])
+    else:
+        v_at = lambda c: eta0 + c * eta1
+        g_post = post["g"].values
+        a_post = post["a"].values
+    b0, b1 = eta0, eta1
     derived = {
-        "v(0.15)": b0 + COH_REF * b1,
-        "v(0)": b0,
-        "v(-0.15)": b0 - COH_REF * b1,
+        "v(0.15)": v_at(COH_REF),
+        "v(0)": v_at(0.0),
+        "v(-0.15)": v_at(-COH_REF),
+        "g_model": g_post,
+        "a_model": a_post,
         "g_native": g_post * k,
         "a_native": a_post / np.sqrt(k),
-        "v_native(0.15)": (b0 + COH_REF * b1) * np.sqrt(k),
+        "v_native(0.15)": v_at(COH_REF) * np.sqrt(k),
     }
     der = az.summary(az.convert_to_dataset({n: v for n, v in derived.items()}), hdi_prob=0.94)
     der = der.reset_index().rename(columns={"index": "param"})
@@ -276,11 +314,19 @@ def main():
         r_hat_max=float(np.nanmax(summ.r_hat.values)), ess_bulk_min=float(np.nanmin(summ.ess_bulk.values)),
         sampling_minutes=minutes, edge_mass=edges, edge_tol=EDGE_TOL, box=BOX,
         priors=("box uniform (explicit)" if priors is not None else
-                ("hssm defaults, link_settings=log_logit (hierarchical)" if args.hier else "hssm defaults")),
-        hierarchical=args.hier,
-        prior_spec=priors, smoke=args.smoke, hssm_version=hssm.__version__, sampler=sampler,
+                (("hierarchical, link_settings=log_logit, "
+                  + ("hssm defaults" if args.default_priors else "explicit wide normals on the logit scale"))
+                 if args.hier else "hssm defaults")),
+        hierarchical=args.hier, link_settings=("log_logit" if args.hier else "identity"),
+        prior_spec=(priors if priors is not None else (hier_priors() if args.hier and not args.default_priors
+                                                       else None)), smoke=args.smoke, hssm_version=hssm.__version__, sampler=sampler,
         posterior_mean={p: float(post[p].values.mean()) for p in params},
         derived_mean={n: float(v.mean()) for n, v in derived.items()},
+        posterior_mean_natural=({"v_Intercept": float(derived["v(0)"].mean()),
+                                 "v_coherence_signed": float((derived["v(0.15)"].mean()
+                                                              - derived["v(0)"].mean()) / COH_REF),
+                                 "a": float(a_post.mean()), "z": float(post["z"].values.mean()),
+                                 "g": float(g_post.mean())} if args.hier else None),
         **dmeta,
     )
     (OUT / f"{tag}_meta.json").write_text(json.dumps(meta, indent=2, default=float))
@@ -290,8 +336,11 @@ def main():
     # thinned posterior draws of the free parameters, so the PPC scripts can run without the netcdf
     flat = {p: post[p].values.reshape(-1) for p in params}
     if args.hier:
-        flat = {"v_Intercept": post["v_Intercept"].values.reshape(-1),
-                "v_coherence_signed": post["v_coherence_signed"].values.reshape(-1),
+        # linearised on the natural scale so the PPC scripts can consume it: v(coh) is NOT linear in
+        # coherence under the generalized logit, so v_coherence_signed here is the secant slope over
+        # [0, 0.15]. The PPCs of record use the pooled fits, not these.
+        v0, v15 = derived["v(0)"].reshape(-1), derived["v(0.15)"].reshape(-1)
+        flat = {"v_Intercept": v0, "v_coherence_signed": (v15 - v0) / COH_REF,
                 "a": a_post.reshape(-1), "z": post["z"].values.reshape(-1), "g": g_post.reshape(-1)}
     n_flat = len(next(iter(flat.values())))
     take = np.linspace(0, n_flat - 1, min(args.n_draws_csv, n_flat)).astype(int)

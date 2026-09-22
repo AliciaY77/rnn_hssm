@@ -64,3 +64,29 @@ The per-network ordering (0.8 > 1.0 > 1.2) does run in the direction theory pred
 pinned against the leaky ceiling, none crosses zero, and the span (9.81 → 9.44 at k = 10, i.e. 0.37 per s)
 is 3 % of the span theory predicts (+4.3 → −6.2, i.e. 10.5 per s). The ordering also tracks a_native
 (0.376 → 0.288), i.e. the bound, not the leak.
+
+## 3. The decisive check: the posterior-predictive psychophysical kernel
+
+`track_a/ppc_kernel.py`, run locally with `/opt/homebrew/anaconda3/bin/python`; outputs
+`output/track_a/kernel_ppc*.csv` and `kernel_ppc*.png`. The fitted parameters are converted to native
+time (`g_nat = g·k`, `a_nat = a/√k`, `x0_nat = a_nat(2z − 1)`, `v_nat(coh) = v(coh)·√k`,
+`t_nat = (t − 0.3)/k`) and the SAME OU is then driven by the networks' own per-trial evidence streams
+(`data/processed/kernel/seed*.npz::rel`, 20 networks × 2000 trials × 750 steps, per-step mean = signed
+coherence, per-step sd = 1.000, autocorrelation < 0.003 at every lag out to 20 — i.e. white).
+The kernel is `kernel_fit/fit_ou_kernel.py::kernel` verbatim (8 bins, logistic regression on z-scored bin
+means, L1-normalised, slope = linear fit over bins).
+
+**Evidence mapping (as the issue requires it be documented).** The fit's drift is linear in signed
+coherence, `v_nat(coh) = v0_nat + v1_nat·coh` with `v0_nat = v_Intercept·√k` and
+`v1_nat = v_coherence_signed·√k` (≈ 27.5 per unit coherence at k = 10). Because the stream has
+`E[e_t] = coh` and `sd(e_t) = 1`, substituting `e_t` for its mean reproduces the fitted mean drift exactly:
+`dx = (v0_nat + v1_nat·e_t − g_nat·x) dt + σ dW`. That substitution adds evidence-driven noise of per-step
+variance `(v1_nat·dt)² = 0.756·dt` on top of the fitted diffusion, so both treatments are reported:
+`σ = 1` (the fitted diffusion; total per-step variance 1.76·dt) and **matched**,
+`σ² = 1 − v1_nat²·dt = 0.244` (total per-step variance exactly dt).
+*Validation of the mapping*: with the matched σ the evidence-driven simulation reproduces the equivalent
+constant-drift OU to within its own Monte-Carlo error (pooled accuracy 0.8085 vs 0.8098 at dt = 0.1 ms),
+so the mapping introduces no artefact.
+
+Variants, both run: **(a) as fitted** — sticky bound at ±a_nat, start x0_nat, choice = sign(x_T);
+**(b) leak only** — same g_nat and v_nat, no bound (B = ∞), choice = sign(x_T).

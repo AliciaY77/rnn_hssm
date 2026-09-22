@@ -107,14 +107,16 @@ def what_kernels(n_trials=None):
                        acc_net=float((y == (coh > 0)).mean()), acc_route1=float((c1 == (coh > 0)).mean()),
                        **{f"wnet{i}": w_net[i] for i in range(N_BINS)},
                        **{f"w1_{i}": w1[i] for i in range(N_BINS)})
-            b = bnd[(bnd.seed == seed) & (bnd.gain == gain) & (bnd.hit_mode == "cross")] if len(bnd) else []
-            if len(b):
-                b = b.iloc[0]
-                c2 = sim_choice(rel, b.g, b.v, b.B, b.a_bias, seed=60_000 + seed)
-                w2, s2 = kernel(rel, c2)
-                row.update(slope_route2=s2, acc_route2=float((c2 == (coh > 0)).mean()),
-                           **{f"w2_{i}": w2[i] for i in range(N_BINS)})
-                ch_r2.append(c2)
+            for hm, sfx in (("none", "route2"), ("cross", "route2hit")):
+                b = bnd[(bnd.seed == seed) & (bnd.gain == gain) & (bnd.hit_mode == hm)] if len(bnd) else []
+                if len(b):
+                    b = b.iloc[0]
+                    c2 = sim_choice(rel, b.g, b.v, b.B, b.a_bias, seed=60_000 + seed)
+                    w2, s2 = kernel(rel, c2)
+                    row.update(**{f"slope_{sfx}": s2, f"acc_{sfx}": float((c2 == (coh > 0)).mean())},
+                               **{f"w_{sfx}_{i}": w2[i] for i in range(N_BINS)})
+                    if hm == "none":
+                        ch_r2.append(c2)
             rows.append(row)
             rel_all.append(rel); ch_all.append(y); coh_all.append(coh); ch_r1.append(c1)
         rel_all = np.concatenate(rel_all); ch_all = np.concatenate(ch_all)
@@ -160,8 +162,11 @@ def what_kernels(n_trials=None):
         axes[2].plot(d.slope_net, d.slope_route1, "o", color=COL[gain], ms=4, alpha=.7,
                      label=f"gain {gain} (route 1)")
         if "slope_route2" in d:
-            axes[2].plot(d.slope_net, d.slope_route2, "^", color=COL[gain], ms=4, alpha=.4, mfc="none",
+            axes[2].plot(d.slope_net, d.slope_route2, "^", color=COL[gain], ms=4, alpha=.5, mfc="none",
                          label=f"gain {gain} (route 2)")
+        if "slope_route2hit" in d:
+            axes[2].plot(d.slope_net, d.slope_route2hit, "x", color=COL[gain], ms=4, alpha=.5,
+                         label=f"gain {gain} (route 2 + hit term)")
     lim = [tab.slope_net.min() - .01, tab.slope_net.max() + .01]
     axes[2].plot(lim, lim, "-", color="gray", lw=.8); axes[2].set_xlabel("network kernel slope")
     axes[2].set_ylabel("model kernel slope"); axes[2].legend(fontsize=6)
@@ -169,7 +174,7 @@ def what_kernels(n_trials=None):
     plt.tight_layout(); fig.savefig(OUT / "kernel_reproduction.png", dpi=140)
     print("saved", OUT / "kernel_reproduction.png")
     for gain, d in tab.groupby("gain"):
-        cols = ["slope_route1"] + (["slope_route2"] if "slope_route2" in d else [])
+        cols = [c for c in ("slope_route1", "slope_route2", "slope_route2hit") if c in d]
         for c in cols:
             ok = d[[c, "slope_net"]].dropna()
             sl, ic = np.polyfit(ok.slope_net, ok[c], 1)
@@ -351,9 +356,57 @@ def what_tables():
     return tab
 
 
+LABEL = {"none": "route 2, no hit term", "cross": "route 2, hit term (crossing-time)",
+         "bern": "route 2, hit term (Bernoulli, ever crossed)",
+         "term": "route 2, hit term (deadline commitment |dv_T| >= 2)"}
+
+
+def what_md():
+    """Markdown tables for RESULTS.md and the issue comment, straight from the CSVs."""
+    m = pd.read_csv(OUT / "analytic_per_network_mle.csv")
+    b = pd.read_csv(OUT / "analytic_per_network_bayes.csv")
+    bnd = load_bounded()
+    bnd = bnd[~bnd.get("pooled", pd.Series(False, index=bnd.index)).fillna(False).astype(bool)]
+    out = []
+    out.append("| route / variant | gain | n | median g [IQR] | g > 0 | interval excludes 0 "
+               "on the predicted side | median B | model vs network hit fraction |")
+    out.append("|---|---|---|---|---|---|---|---|")
+
+    def row(lbl, d, gc, lo, hi, has_B):
+        for gain, dd in d.groupby("gain"):
+            q1, med, q3 = np.percentile(dd[gc], [25, 50, 75])
+            excl = ((dd[lo] > 0) if gain < 0.9 else (dd[hi] < 0) if gain > 1.1
+                    else ((dd[lo] > 0) | (dd[hi] < 0)))
+            bcol = f"{dd.B.median():.2f}" if has_B else "--"
+            hcol = (f"{dd.model_hit_frac.mean():.3f} vs {dd.net_hit_frac.mean():.3f}"
+                    if has_B and dd.net_hit_frac.notna().any() else "--")
+            out.append(f"| {lbl} | {gain} | {len(dd)} | **{med:+.2f}** [{q1:+.2f}, {q3:+.2f}] | "
+                       f"{int((dd[gc] > 0).sum())}/{len(dd)} | **{int(excl.sum())}/{len(dd)}** | "
+                       f"{bcol} | {hcol} |")
+    row("route 1 MLE (95 % Wald)", m, "g", "g_lo", "g_hi", False)
+    row("route 1 NUTS (94 % HDI)", b, "g_mean", "g_hdi_lo", "g_hdi_hi", False)
+    for hm in ("none", "term", "bern", "cross"):
+        d = bnd[bnd.hit_mode == hm]
+        if len(d):
+            row(LABEL[hm] + " (95 % profile)", d, "g", "g_lo", "g_hi", True)
+    md = "\n".join(out)
+    (OUT / "summary_table.md").write_text(md + "\n")
+    print(md)
+    pf = sorted((OUT / "bounded").glob("pooled_*.json"))
+    if pf:
+        pr = pd.DataFrame([{k: v for k, v in json.loads(f.read_text()).items() if k != "profile"}
+                           for f in pf])
+        print("\n| pooled route 2 | gain | g [95 % profile] | B | v | trials | M | model vs network hit |")
+        print("|---|---|---|---|---|---|---|---|")
+        for _, r in pr.sort_values(["hit_mode", "gain"]).iterrows():
+            print(f"| {LABEL[r.hit_mode]} | {r.gain} | **{r.g:+.3f}** [{r.g_lo:+.3f}, {r.g_hi:+.3f}] | "
+                  f"{r.B:.2f} | {r.v:.1f} | {int(r.n_trials)} | {int(r.M)} | "
+                  f"{r.model_hit_frac:.3f} vs {r.net_hit_frac:.3f} |")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--what", choices=["kernels", "gfig", "recovery", "tables", "all"], default="all")
+    ap.add_argument("--what", choices=["kernels", "gfig", "recovery", "tables", "md", "all"], default="all")
     ap.add_argument("--n-trials", type=int, default=None)
     a = ap.parse_args()
     if a.what in ("kernels", "all"):
@@ -364,6 +417,8 @@ def main():
         what_recovery()
     if a.what in ("tables", "all"):
         what_tables()
+    if a.what in ("md", "all"):
+        what_md()
 
 
 if __name__ == "__main__":

@@ -32,6 +32,14 @@ NAMES = ["v0", "v1", "a", "z", "g", "t"]
 
 
 
+def _no_parquet():
+    try:
+        import pyarrow  # noqa: F401
+        return False
+    except ImportError:
+        return True
+
+
 def target_from_data(df, omissions, gain, bound, k):
     cohs = sorted(df.coherence.round(2).unique()); tgt = {}
     for c in cohs:
@@ -78,7 +86,8 @@ def main():
     ap.add_argument("--n-sim", type=int, default=2000); ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args(); k = a.stretch; OUT.mkdir(parents=True, exist_ok=True)
     tag = f"match_b{a.bound}_g{a.gain}_k{k:g}"; t0 = time.time()
-    df = pd.read_parquet(DATA / f"hssm_ready_nxx1_fixed_b{a.bound}_g{a.gain}.parquet")
+    stem = DATA / f"hssm_ready_nxx1_fixed_b{a.bound}_g{a.gain}"
+    df = pd.read_csv(f"{stem}.csv") if not stem.with_suffix(".parquet").exists() or _no_parquet() else pd.read_parquet(f"{stem}.parquet")
     omissions = pd.read_csv(OMIT); cohs = sorted(df.coherence.round(2).unique())
     tgt, scale = target_from_data(df, omissions, a.gain, a.bound, k); max_t = 0.75 * k
     print(f"{tag}: {len(df)} trials, cohs {cohs}, RT scale (IQR, stretched) {scale:.3f} s, horizon {max_t} s", flush=True)

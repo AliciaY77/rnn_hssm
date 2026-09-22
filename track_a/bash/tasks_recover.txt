@@ -1,0 +1,6 @@
+--gain 0.8 --k 10 --g-source theory
+--gain 1.0 --k 10 --g-source theory
+--gain 1.2 --k 10 --g-source theory
+--gain 0.8 --k 10 --g-source fitted
+--gain 1.0 --k 10 --g-source fitted
+--gain 1.2 --k 10 --g-source fitted

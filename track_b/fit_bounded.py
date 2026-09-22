@@ -156,8 +156,12 @@ def nm(nll, x0, steps, maxiter):
 # ----------------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--seed", type=int, required=True)
+    ap.add_argument("--seed", type=int, default=-1, help="network seed; ignored with --pooled")
     ap.add_argument("--gain", type=float, required=True)
+    ap.add_argument("--pooled", action="store_true",
+                    help="fit all 20 networks jointly (one parameter set per gain), --sub-trials per network")
+    ap.add_argument("--sub-trials", type=int, default=500,
+                    help="trials per network in a pooled fit (memory: the MC noise block is M x N x T)")
     ap.add_argument("--hit-mode", choices=["none", "bern", "cross"], default="none")
     ap.add_argument("--M", type=int, default=300)
     ap.add_argument("--n-trials", type=int, default=None)
@@ -181,8 +185,15 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     t_start = time.time()
 
-    d = load_network(a.seed, gain=a.gain, n_trials=a.n_trials,
-                     data_dir=a.data_dir or (ROOT / "data" / "processed" / "kernel"))
+    data_dir = a.data_dir or (ROOT / "data" / "processed" / "kernel")
+    if a.pooled:
+        ds = [load_network(s_, gain=a.gain, n_trials=a.sub_trials, data_dir=data_dir)
+              for s_ in range(42, 62)]
+        d = {k: np.concatenate([dd[k] for dd in ds]) for k in ds[0]
+             if isinstance(ds[0][k], np.ndarray)}
+        print(f"pooled fit: {len(ds)} networks x {a.sub_trials} trials = {len(d['rel'])} trials", flush=True)
+    else:
+        d = load_network(a.seed, gain=a.gain, n_trials=a.n_trials, data_dir=data_dir)
     rel = d["rel"]
     N, T = rel.shape
     y = d[f"choice_g{a.gain}"]
@@ -265,7 +276,7 @@ def main():
         prof.sort(key=lambda z: z["g"])
     g_lo, g_hi = profile_interval(prof, g_hat, nll_hat) if prof else (np.nan, np.nan)
 
-    res = dict(seed=a.seed, gain=a.gain, hit_mode=a.hit_mode, M=a.M, tau=TAU, n_trials=N,
+    res = dict(seed=a.seed, gain=a.gain, hit_mode=a.hit_mode, M=a.M, tau=TAU, n_trials=N, pooled=a.pooled,
                backend=backend, g=float(g_hat), v=float(v_hat), B=float(B_hat), a_bias=float(a_hat),
                nll=nll_hat, g_lo=float(g_lo), g_hi=float(g_hi),
                r1_g=r1["g"], r1_g_se=r1["g_se"], r1_v=r1["v"], r1_a_bias=r1["a_bias"], r1_nll=r1["nll"],
@@ -273,7 +284,7 @@ def main():
                acc_net=float(np.mean(y == (d["coh"] > 0))), per_eval_s=per_eval,
                minutes=(time.time() - t_start) / 60, profile=prof,
                synthetic=str(a.synthetic) if a.synthetic else None)
-    name = a.tag or f"seed{a.seed}_g{a.gain}_{a.hit_mode}"
+    name = a.tag or (f"pooled_g{a.gain}_{a.hit_mode}" if a.pooled else f"seed{a.seed}_g{a.gain}_{a.hit_mode}")
     (out_dir / f"{name}.json").write_text(json.dumps(res, indent=1))
     print(f"\nRESULT seed {a.seed} gain {a.gain} [{a.hit_mode}]: g = {g_hat:+.3f} "
           f"[{g_lo:+.3f}, {g_hi:+.3f}], B = {B_hat:.3f}, v = {v_hat:.2f}, a_bias = {a_hat:+.3f}, "

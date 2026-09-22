@@ -107,7 +107,7 @@ def what_kernels(n_trials=None):
                        acc_net=float((y == (coh > 0)).mean()), acc_route1=float((c1 == (coh > 0)).mean()),
                        **{f"wnet{i}": w_net[i] for i in range(N_BINS)},
                        **{f"w1_{i}": w1[i] for i in range(N_BINS)})
-            for hm, sfx in (("none", "route2"), ("cross", "route2hit")):
+            for hm, sfx in (("none", "route2"), ("cross", "route2hit"), ("term", "route2term")):
                 b = bnd[(bnd.seed == seed) & (bnd.gain == gain) & (bnd.hit_mode == hm)] if len(bnd) else []
                 if len(b):
                     b = b.iloc[0]
@@ -174,9 +174,12 @@ def what_kernels(n_trials=None):
     plt.tight_layout(); fig.savefig(OUT / "kernel_reproduction.png", dpi=140)
     print("saved", OUT / "kernel_reproduction.png")
     for gain, d in tab.groupby("gain"):
-        cols = [c for c in ("slope_route1", "slope_route2", "slope_route2hit") if c in d]
+        cols = [c for c in ("slope_route1", "slope_route2", "slope_route2hit", "slope_route2term")
+                if c in d]
         for c in cols:
             ok = d[[c, "slope_net"]].dropna()
+            if len(ok) < 3:
+                continue
             sl, ic = np.polyfit(ok.slope_net, ok[c], 1)
             r = np.corrcoef(ok.slope_net, ok[c])[0, 1]
             print(f"gain {gain} {c}: model = {sl:.3f} x network {ic:+.4f}, r = {r:.3f}, "

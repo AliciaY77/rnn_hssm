@@ -168,3 +168,121 @@ per gain r = 0.981 / 0.995 / 0.970.
 1000 vs 2000 trials per network: median g +4.25 / +0.39 / −2.66 vs +4.13 / +0.32 / −2.63; per-network
 r = 0.975 / 0.962 / 0.955; mean |Δg| = 0.19 / 0.21 / 0.29; SEs grow by ×1.43 (≈ √2); 60/60 signs
 unchanged; still 20/20 intervals excluding 0 at gains 0.8 and 1.2 (11/20 at gain 1.0, vs 15/20).
+
+---
+
+## 2. Route 2 (sticky bound, Monte-Carlo likelihood): 186 fits
+
+M = 300 realisations per trial, common random numbers, τ = 0.1, Nelder-Mead on (g, v, log B, a_bias) from
+the best three of a coarse (B × a_bias) start grid, 95 % intervals by profile likelihood on g.
+20 networks × {gains 0.8, 1.2} × {no hit term, `term`, `bern`, `cross`} + 20 × gain 1.0 without the hit
+term + 6 pooled fits. Per fit ≈ 10–20 min on 8 Oscar cores, 0.57 s per likelihood evaluation
+(2000 trials × 750 steps × 300 realisations, JAX `lax.scan`).
+
+### Per network (`output/track_b/route2_per_network.csv`, `summary_table.md`)
+
+| variant | gain | median g [IQR] | g > 0 | interval excludes 0 as predicted | median B | model vs network hit fraction | fits with g ≥ 8 |
+|---|---|---|---|---|---|---|---|
+| no hit term | 0.8 | **+4.13** [+3.01, +4.58] | 20/20 | **20/20** | 6.59 | 0.004 vs 0.858 | 0 |
+| no hit term | 1.0 | **+0.52** [−0.20, +0.79] | 13/20 | 14/20 | 6.04 | 0.197 vs 0.955 | 0 |
+| no hit term | 1.2 | **−2.59** [−3.77, −2.11] | 1/20 | **19/20** | 6.38 | 0.664 vs 0.979 | 0 |
+| hit term, deadline commitment (`term`) | 0.8 | **+2.51** [+1.88, +3.06] | 20/20 | **20/20** | 1.44 | 0.448 vs 0.463 | 0 |
+| hit term, deadline commitment (`term`) | 1.2 | **−2.53** [−3.23, −2.19] | 0/20 | **20/20** | 1.80 | 0.874 vs 0.880 | 0 |
+| hit term, Bernoulli ever-crossed (`bern`) | 0.8 | **+5.90** [+4.56, +6.82] | 20/20 | **20/20** | 0.97 | 0.814 vs 0.858 | 3 |
+| hit term, Bernoulli ever-crossed (`bern`) | 1.2 | **−3.51** [−4.32, −2.95] | 1/20 | **19/20** | 1.38 | 0.964 vs 0.979 | 0 |
+| hit term, crossing-time (`cross`) | 0.8 | **+8.28** [+7.63, +8.97] | 20/20 | **20/20** | 0.94 | 0.846 vs 0.858 | 13 |
+| hit term, crossing-time (`cross`) | 1.2 | **−1.19** [−2.43, +0.32] | 6/20 | 14/20 | 0.83 | 0.983 vs 0.979 | 0 |
+
+Without the hit term, route 2 is route 1: g agrees per network with r = 0.998 / 0.926 / 0.952 and mean
+difference +0.012 / +0.077 / +0.009 per s at gains 0.8 / 1.0 / 1.2. The bound is identified only from
+below (median B ≈ 6.4, range 1.28–430); the choice data alone do not pin it.
+
+### Pooled, 20 networks × 500 trials = 10 000 trials per gain, M = 100 (`route2_pooled.csv`)
+
+| variant | gain 0.8 | gain 1.0 | gain 1.2 |
+|---|---|---|---|
+| no hit term | **+3.948** [+3.797, +4.106], B = 9.36 | **+0.497** [+0.228, +0.618], B = 7.18 | **−2.542** [−2.738, −2.418], B = 7.13 |
+| crossing-time hit term | **+9.273** [+9.200, +9.497], B = 0.94 | **+5.025** [+4.684, +5.494], B = 0.82 | **−0.628** [−0.670, −0.221], B = 0.80 |
+
+(Route-1 pooled on all 40 000 trials: +3.946 / +0.229 / −2.730.)
+
+### The one degenerate per-network fit
+
+Without the hit term, exactly **one** of the 60 fits lands on the leak-vs-bound degenerate solution:
+seed 61, gain 1.2, g = **+1.055** [+0.639, +1.055] with B = 1.50 (nll 329.4 against 331.9 for the
+unbounded route-1 solution at g = −0.93). Its profile interval hits the grid edge, so it is flagged.
+No fit at any gain reaches the g ≈ +12 / low-B solution that `kernel_fit/` hit in 3 of 60
+simulation-matching fits — the full likelihood is more informative than the kernel + psychometric summary
+it was matched on. With the `term` hit term seed 61 becomes g = **−0.361** [−0.501, −0.185], i.e. the
+degeneracy is resolved and the network joins the other 19.
+
+### Why `bern` and `cross` inflate the leak (`output/track_b/bound_hit_absorption.csv`)
+
+A sticky bound implies "ever hit" ⇔ |a_T| ≥ B. The network's |dv| = 2.0 crossing is **not** absorbing:
+of the trials that cross before the deadline, **46.0 % / 20.9 % / 10.4 %** are back below 2.0 at T
+(gains 0.8 / 1.0 / 1.2; per-network range 36–58 % at gain 0.8). Forcing a sticky bound to be hit at the
+network's *transient* crossing rate therefore drives B down to ≈ 0.9 and the leak up: at gain 0.8 the
+median g goes +4.13 → +5.90 (`bern`) → +8.28 (`cross`), i.e. the more of the crossing-time distribution
+the bound is made to reproduce, the larger the inflation, and 13/20 `cross` fits land at g ≥ 8 with B < 1.
+The cost is visible in the observable the fits were *not* fitted to — the psychophysical kernel:
+
+| gain | network kernel slope (mean over 20) | no hit term | `term` | `cross` |
+|---|---|---|---|---|
+| 0.8 | +0.0386 | +0.0396 (r = 0.955) | +0.0208 (r = 0.675) | **−0.0097** (r = 0.082) |
+| 1.2 | −0.0257 | −0.0303 (r = 0.950) | −0.0300 (r = 0.909) | −0.0539 (r = 0.343) |
+
+The `cross` fits reproduce the choices and the crossing times and get the **sign of the kernel wrong at
+gain 0.8** (the strong leak's recency is cancelled by early bound commitment). The `term` variant —
+the same observable measured at the deadline, which is what a sticky bound actually implies — keeps the
+kernel, identifies B (1.30–2.13 at gain 0.8, 1.43–4.75 at 1.2), matches the commitment fraction to
+within 0.015, and gives **20/20 leaky at gain 0.8 and 20/20 unstable at gain 1.2**.
+
+Pooled kernel reproduction, route 2 without the hit term: +0.0404 / +0.0030 / −0.0307 against the
+networks' +0.0392 / +0.0021 / −0.0261; accuracy 0.865 / 0.888 / 0.869 against 0.866 / 0.887 / 0.869.
+
+## 3. Recovery, route 2 (`output/track_b/recovery_route2.csv`)
+
+Choices simulated on the real evidence streams with the landscape g (+4.3 / −6.2), the route-1 v and
+a_bias and the fitted B, refitted with and without the hit term; 23 fits.
+
+| | n | sign of g correct | truth inside the 95 % interval | bias |
+|---|---|---|---|---|
+| no hit term | 11 | 11/11 | 9/11 | +0.17 |
+| crossing-time hit term | 11 | 11/11 | 8/11 | +0.08 |
+| Bernoulli hit term (degenerate case only) | 1 | 1/1 | 1/1 | −0.87 |
+| gain 0.8 only | 10 | 10/10 | 5/10 | +0.30 |
+| gain 1.2 only | 13 | 13/13 | 13/13 | −0.02 |
+
+**The degenerate case** (g = +12, B = 1.2 simulated on seed 42's gain-1.2 evidence; commitment fraction
+0.403 against that network's real 0.9995):
+
+| variant | recovered g [95 %] | B | model vs data hit fraction |
+|---|---|---|---|
+| no hit term | **+11.87** [+10.50, +12.92] | 1.50 | 0.363 vs 0.403 |
+| Bernoulli hit term | **+11.14** [+10.46, +12.42] | 1.31 | 0.398 vs 0.403 |
+| crossing-time hit term | **+11.88** [+10.60, +12.78] | 1.23 | 0.401 vs 0.403 |
+
+All three recover it, including the choice-only fit: when the data really come from a low bound, the
+2000-trial likelihood identifies it without any hit term. The hit term is therefore not needed to break
+the degeneracy in this model — and when its data-side observable is the network's non-absorbing dv
+crossing, it actively misleads. Coverage at gain 0.8 is the weak point (5/10): there the bound is barely
+hit, B is weakly identified, and the fits are biased +0.2…+0.4 per s.
+
+## 4. What Track B establishes
+
+1. The leaky → near-perfect → unstable transition is recoverable from **behaviour alone** by a
+   likelihood fit conditioned on the trial-by-trial evidence, **per network, with intervals**:
+   20/20 networks leaky at gain 0.8 and 20/20 unstable at gain 1.2 with intervals excluding zero
+   (route 1, both MLE and NUTS; route 2 without the hit term gives 20/20 and 19/20; route 2 with the
+   deadline-commitment hit term gives 20/20 and 20/20).
+2. The pooled estimates are +3.95 [+3.83, +4.06] / +0.23 [+0.14, +0.32] / −2.73 [−2.84, −2.62] per s,
+   reproducing `kernel_fit/`'s +3.98 / +0.24 / −2.50 with uncertainty, and the zero crossing of g against
+   gain lands at f = 1.0155 pooled (per-network median 1.0227) against Fig 1F's 1.016.
+3. The fitted g tracks each network's own kernel slope with r = 0.996 across the 60 fits, and the fitted
+   models reproduce the kernel bin by bin and the psychometric curve.
+4. The sticky bound adds nothing at gain 0.8 (it is not hit) and little at 1.2; the leak-vs-bound
+   degeneracy appears in exactly 1 of 60 choice-only fits and is resolved by the deadline-commitment
+   observable.
+5. Not in scope / not done: a two-timescale (fast + slow leak) model; a bounded-choice replication
+   (the fixed-bound data come from a different rollout and cannot be matched trial by trial);
+   gains 1.0 for the `bern` and `cross` variants (cancelled to save queue time).

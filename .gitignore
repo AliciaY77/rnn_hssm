@@ -21,3 +21,7 @@ output/recovery/*.nc
 !output/feasibility/
 !output/kernel_fit/
 output/kernel_fit/export.log
+
+# issue #3 Track A: track tables/figures/summaries, not netcdfs
+!output/track_a/
+output/track_a/*.nc

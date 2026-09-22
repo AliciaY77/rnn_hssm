@@ -77,6 +77,8 @@ def parse_args():
     p.add_argument("--smoke", action="store_true", help="1 chain, 20 tune / 20 draws; pipeline check only")
     p.add_argument("--rng", type=int, default=0, help="seed for the subsample and the sampler")
     p.add_argument("--tag", type=str, default="")
+    p.add_argument("--n-draws-csv", type=int, default=400,
+                   help="thinned posterior draws written to <tag>_draws.csv for the PPC scripts")
     p.add_argument("--data-csv", type=str, default="", help="override the input CSV (appendix fits)")
     p.add_argument("--default-priors", action="store_true",
                    help="use HSSM's own default priors instead of the explicit box-uniform ones")
@@ -258,6 +260,18 @@ def main():
     (OUT / f"{tag}_meta.json").write_text(json.dumps(meta, indent=2, default=float))
     print("divergences:", n_div, "of", total, "| edge mass:", {kk: round(vv, 4) for kk, vv in edges.items()},
           flush=True)
+
+    # thinned posterior draws of the free parameters, so the PPC scripts can run without the netcdf
+    flat = {p: post[p].values.reshape(-1) for p in params}
+    n_flat = len(next(iter(flat.values())))
+    take = np.linspace(0, n_flat - 1, min(args.n_draws_csv, n_flat)).astype(int)
+    draws_df = pd.DataFrame({p: v[take] for p, v in flat.items()})
+    draws_df["t"] = t_fixed
+    draws_df["k"] = k
+    draws_df["gain"] = args.gain
+    draws_df["seed_filter"] = args.seed_filter
+    draws_df.to_csv(OUT / f"{tag}_draws.csv", index=False)
+    print("saved", OUT / f"{tag}_draws.csv", f"({len(draws_df)} draws)", flush=True)
 
     idata.to_netcdf(str(OUT / f"{tag}.nc"))
     print("saved", OUT / f"{tag}.nc", flush=True)

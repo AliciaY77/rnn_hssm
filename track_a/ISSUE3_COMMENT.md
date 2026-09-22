@@ -10,7 +10,7 @@
 | 1.0 | 39 881 | 0.30 % | 0.996 [0.988, 1.000] | **+9.96** [+9.88, +10.00] | 0.324 | 4.09 | 1.00 | 2474 | 0/4000 | **0.99** | fails |
 | 1.2 | 39 988 | 0.03 % | 0.921 [0.872, 0.968] | **+9.21** [+8.72, +9.68] | 0.291 | 4.10 | 1.00 | 1815 | 0/4000 | 0.01 | fails |
 
-**The issue's expected outcome is confirmed: converged posteriors, g > 0 at every gain, no ordering that tracks the leaky → perfect → unstable prediction.** Every fit in the whole study converged (R-hat ≤ 1.01, ESS_bulk ≥ 400, **0 divergences** in 140 fits).
+**The issue's expected outcome is confirmed: converged posteriors, g > 0 at every gain, no ordering that tracks the leaky → perfect → unstable prediction.** Every fit in the whole study converged: R-hat ≤ 1.01 everywhere, ESS_bulk ≥ 400 in all but one (the hierarchical gain-0.8 fit, 222 on `v_Intercept`), and **1 divergence in 150 fits × 4000 draws** (gain 1.2, k = 16, seed 44; 0 in every other fit).
 
 ### g is on the +1 ceiling at two of the three gains — raising k fixes only gain 1.2
 

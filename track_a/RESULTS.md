@@ -46,9 +46,9 @@ were resubmitted as 6613593 and 6613594 once t was fixed. No result in this note
 
 ## 1. Headline: every fit converges, every fit says LEAKY, and g is not identified
 
-`output/track_a/headline_pooled.csv`, `native_units.csv`, `all_fits.csv`. **All 12 pooled fits at
-k = 8/10/12/16 converged: R-hat max 1.00, ESS_bulk min 1705, 0 divergences out of 4000 draws, 23–34 min
-each on 4 cores.** Headline at the plan's k = 10 (g > 0 = leaky):
+`output/track_a/headline_pooled.csv`, `native_units.csv`, `all_fits.csv`. **All 18 pooled fits at
+k = 8/10/12/16/20/24 converged: R-hat max 1.00, ESS_bulk min 1661, 0 divergences out of 4000 draws each,
+23–34 min on 4 cores.** Headline at the plan's k = 10 (g > 0 = leaky):
 
 | gain | n | t fixed | omissions | g [94 % HDI] (stretched) | g_native per s [94 % HDI] | a | a_native | v(0.15) | v_native(0.15) | z | R-hat | ESS_bulk | div | edge mass g | kernel verdict |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -101,8 +101,8 @@ a quasi-stationary population that leaks across the bound slowly.
 
 ## 2. Per-network fits (120 fits, job 6613594): 20/20 networks leaky at every gain
 
-`output/track_a/per_network.csv`. All 120 converged (R-hat ≤ 1.01, ESS_bulk ≥ 400, 0 divergences);
-median 1.5–2.2 min each.
+`output/track_a/per_network.csv`. All 120 converged: R-hat ≤ 1.01 and ESS_bulk ≥ 400 in every fit,
+0 divergences in 119 of them and 1/4000 in the last (gain 1.2, k = 16, seed 44); median 1.5–2.2 min each.
 
 | gain | k | networks with g > 0 | 94 % HDI excludes 0 (positive) | median g_native (IQR) | median a_native | median v_native(0.15) | median edge mass for g |
 |---|---|---|---|---|---|---|---|
@@ -304,7 +304,10 @@ network. It also shows the corrected pipeline is not hard-wired to return g > 0.
 ## 10. Conclusions
 
 1. **The corrected pipeline works.** 18 pooled fits, 120 per-network fits, 3 hierarchical fits, 6 recovery
-   fits, 2 appendix fits: R-hat ≤ 1.01, ESS_bulk ≥ 400 and 0 divergences in every single one. The three failures of the
+   fits, 2 appendix fits: R-hat ≤ 1.01 and ESS_bulk ≥ 400 in all but one (the hierarchical gain-0.8 fit,
+   ESS_bulk 222 on `v_Intercept`), and **1 divergence in 150 fits × 4000 = 600 000 draws** — that single one is
+   in the gain-1.2, k = 16, seed-44 per-network fit (1/4000 = 0.025 %, far under the 1 % gate); every other
+   fit has exactly 0. The three failures of the
    original issue-#1 fits (≈100 % divergences, t absorbing the 0.3 s offset, drift at the +2 edge) are all
    gone: t is fixed, the stretch puts a and v in the interior, and the lapse mixture is off.
 2. **The fits describe RT and choice well.** Median absolute RT-quantile error 6.5 / 1.6 / 0.8 ms at gains

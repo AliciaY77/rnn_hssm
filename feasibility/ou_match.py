@@ -54,10 +54,11 @@ def target_from_data(df, omissions, gain, bound, k):
 def simulate(theta_vec, cohs, n, max_t, seed):
     v0, v1, a, z, g, t = theta_vec; out = {}
     for i, c in enumerate(cohs):
+        # ssms segfaults for small max_t (observed at 0.75 s): simulate to >= 2 s and apply the deadline afterwards
         s = simulator(theta=dict(v=v0 + v1 * c, a=a, z=z, g=g, t=t), model="ornstein", n_samples=n,
-                      delta_t=0.001, max_t=max_t, random_state=seed + i)
+                      delta_t=0.001, max_t=max(max_t, 2.0), random_state=seed + i)
         rt = np.asarray(s["rts"]).ravel(); ch = np.asarray(s["choices"]).ravel()
-        ok = (rt > 0) & (rt < max_t); omit = 1 - ok.mean(); rt, ch = rt[ok], ch[ok]
+        ok = (rt > 0) & (rt <= max_t); omit = 1 - ok.mean(); rt, ch = rt[ok], ch[ok]
         corr = ch > 0
         out[c] = dict(acc=corr.mean() if len(corr) else np.nan, omit=omit,
                       q_c=np.quantile(rt[corr], Q) if corr.sum() >= 5 else None,

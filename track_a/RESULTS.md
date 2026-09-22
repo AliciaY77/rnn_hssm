@@ -90,3 +90,13 @@ so the mapping introduces no artefact.
 
 Variants, both run: **(a) as fitted** — sticky bound at ±a_nat, start x0_nat, choice = sign(x_T);
 **(b) leak only** — same g_nat and v_nat, no bound (B = ∞), choice = sign(x_T).
+
+## 6. Truncation caveat (required by the issue)
+
+The data are horizon-truncated at 750 ms native (7.8 s stretched, = 0.3 + k·0.75 — the issue says 7.5 s,
+which omits the 0.3 s offset) and HSSM has no censored likelihood. The recovery study of issue #1 showed
+that fitting horizon-truncated data with an untruncated likelihood **biases g toward "unstable"**
+(g < 0). The bias therefore runs *against* the outcome found here, which makes "leaky at every gain"
+conservative. The omission fractions are small at two of the three gains (3.40 % / 0.30 % / 0.03 %),
+and the gain with the largest truncation (0.8) is the one with the *most* leaky estimate — the opposite
+of what the truncation bias would produce.

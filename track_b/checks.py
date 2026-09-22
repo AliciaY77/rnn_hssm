@@ -218,8 +218,11 @@ def what_recovery():
         ax.legend(fontsize=6)
     plt.tight_layout(); fig.savefig(OUT / "recovery.png", dpi=140)
     print("saved", OUT / "recovery.png")
+    r1 = r1.assign(err=r1.g - r1.g_true, z=(r1.g - r1.g_true) / r1.g_se)
     print(r1.groupby(["kind", "gain"]).agg(n=("g", "size"), g_true=("g_true", "mean"),
-                                           g_mean=("g", "mean"), bias=("g", "mean"),
+                                           g_mean=("g", "mean"), bias=("err", "mean"),
+                                           rmse=("err", lambda x: float(np.sqrt((x ** 2).mean()))),
+                                           mean_se=("g_se", "mean"),
                                            sign_ok=("sign_ok", "mean"),
                                            covered=("covered", "mean")).round(3).to_string())
     f2 = OUT / "recovery_route2.csv"

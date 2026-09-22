@@ -35,10 +35,18 @@ def sim_choice(rel, g, v, B, a_bias, seed):
 
 
 def load_bounded(dirname="bounded"):
+    """Every route-2 per-fit JSON as one row, plus flags derived from the stored profile."""
     rows = []
     for f in sorted((OUT / dirname).glob("*.json")):
         j = json.loads(f.read_text())
-        j.pop("profile", None)
+        prof = j.pop("profile", None) or []
+        if prof:
+            g = np.array([q["g"] for q in prof]); nll = np.array([q["nll"] for q in prof])
+            j["prof_min_g"] = float(g.min()); j["prof_max_g"] = float(g.max())
+            j["prof_drop_lo"] = float(nll[0] - j["nll"]); j["prof_drop_hi"] = float(nll[-1] - j["nll"])
+            j["prof_edge"] = bool(nll[0] - j["nll"] < 1.92 or nll[-1] - j["nll"] < 1.92)
+            j["prof_better"] = float(min(0.0, nll.min() - j["nll"]))
+        j["file"] = f.name
         rows.append(j)
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
@@ -238,11 +246,18 @@ def _summary(d, gc, lo, hi, label, rows):
         q1, med, q3 = np.percentile(dd[gc], [25, 50, 75])
         excl = ((dd[lo] > 0) if gain < 0.9 else (dd[hi] < 0) if gain > 1.1
                 else ((dd[lo] > 0) | (dd[hi] < 0)))
-        rows.append(dict(route=label, gain=gain, n=len(dd), median_g=med, iqr_lo=q1, iqr_hi=q3,
-                         frac_sign=float((dd[gc] > 0).mean() if gain < 0.9 else (dd[gc] < 0).mean()),
-                         n_excl_zero=int(excl.sum()), predicted=pred,
-                         median_B=float(dd.B.median()) if "B" in dd else np.nan,
-                         median_v=float(dd[gc.replace("g", "v")].median()) if gc.replace("g", "v") in dd else np.nan))
+        row = dict(route=label, gain=gain, n=len(dd), median_g=med, iqr_lo=q1, iqr_hi=q3,
+                   min_g=float(dd[gc].min()), max_g=float(dd[gc].max()),
+                   n_g_pos=int((dd[gc] > 0).sum()), n_g_neg=int((dd[gc] < 0).sum()),
+                   n_excl_zero=int(excl.sum()),
+                   n_excl_above=int((dd[lo] > 0).sum()), n_excl_below=int((dd[hi] < 0).sum()),
+                   predicted=pred)
+        if "B" in dd:
+            row.update(median_B=float(dd.B.median()), min_B=float(dd.B.min()), max_B=float(dd.B.max()),
+                       median_v=float(dd.v.median()), n_degenerate=int(((dd[gc] >= 8) & (dd.B < 2)).sum()),
+                       mean_abs_hit_err=float((dd.model_hit_frac - dd.net_hit_frac).abs().mean()),
+                       n_prof_edge=int(dd.prof_edge.sum()) if "prof_edge" in dd else -1)
+        rows.append(row)
 
 
 def what_tables():
@@ -255,6 +270,13 @@ def what_tables():
     except FileNotFoundError:
         pass
     bnd = load_bounded()
+    if len(bnd):
+        bnd = bnd[~bnd.get("pooled", pd.Series(False, index=bnd.index)).fillna(False).astype(bool)]
+        keep = ["seed", "gain", "hit_mode", "g", "g_lo", "g_hi", "B", "v", "a_bias", "nll",
+                "r1_g", "r1_g_se", "model_hit_frac", "net_hit_frac", "acc_model", "acc_net",
+                "prof_edge", "prof_better", "M", "n_trials", "minutes"]
+        bnd[[c for c in keep if c in bnd]].sort_values(["hit_mode", "gain", "seed"]).to_csv(
+            OUT / "route2_per_network.csv", index=False)
     for hm, lab in (("none", "route 2 (no hit term)"), ("cross", "route 2 (hit term)"),
                     ("bern", "route 2 (Bernoulli hit)")):
         d = bnd[bnd.hit_mode == hm] if len(bnd) else []
@@ -262,12 +284,33 @@ def what_tables():
             _summary(d, "g", "g_lo", "g_hi", lab, rows)
     tab = pd.DataFrame(rows)
     tab.to_csv(OUT / "summary_by_route.csv", index=False)
-    print(tab.round(3).to_string(index=False))
+    cols = ["route", "gain", "n", "median_g", "iqr_lo", "iqr_hi", "n_g_pos", "n_excl_zero",
+            "median_B", "min_B", "max_B", "median_v", "n_degenerate", "mean_abs_hit_err", "n_prof_edge"]
+    print(tab[[c for c in cols if c in tab]].round(3).to_string(index=False))
     if len(bnd):
         print("\ndegenerate solutions (g >= 8 and B < 2):")
         deg = bnd[(bnd.g >= 8) & (bnd.B < 2)]
         print(deg[["seed", "gain", "hit_mode", "g", "B", "v", "nll", "model_hit_frac",
                    "net_hit_frac"]].round(3).to_string(index=False) if len(deg) else "  none")
+        print("\nroute 1 vs route 2 (no hit term), same cells:")
+        j = bnd[bnd.hit_mode == "none"].merge(m[["seed", "gain", "g", "g_se"]], on=["seed", "gain"],
+                                              suffixes=("_r2", "_r1"))
+        if len(j):
+            j["d"] = j.g_r2 - j.g_r1
+            print(j.groupby("gain").apply(
+                lambda d: pd.Series(dict(n=len(d), mean_diff=d.d.mean(), max_abs_diff=d.d.abs().max(),
+                                         r=np.corrcoef(d.g_r1, d.g_r2)[0, 1] if len(d) > 2 else np.nan)),
+                include_groups=False).round(3).to_string())
+        pooled_files = sorted((OUT / "bounded").glob("pooled_*.json"))
+        if pooled_files:
+            pr = pd.DataFrame([{k: v for k, v in json.loads(f.read_text()).items() if k != "profile"}
+                               for f in pooled_files])
+            pr[["gain", "hit_mode", "g", "g_lo", "g_hi", "B", "v", "a_bias", "nll", "n_trials",
+                "model_hit_frac", "net_hit_frac"]].sort_values(["hit_mode", "gain"]).to_csv(
+                OUT / "route2_pooled.csv", index=False)
+            print("\npooled route-2 fits:")
+            print(pr[["gain", "hit_mode", "g", "g_lo", "g_hi", "B", "v", "n_trials", "M",
+                      "model_hit_frac", "net_hit_frac"]].round(3).to_string(index=False))
     return tab
 
 

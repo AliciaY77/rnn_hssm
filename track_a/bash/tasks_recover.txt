@@ -1,0 +1,6 @@
+--gain 0.8 --k 10 --g-source theory --params-json output/track_a/genparams_g0.8_k10.json
+--gain 1.0 --k 10 --g-source theory --params-json output/track_a/genparams_g1.0_k10.json
+--gain 1.2 --k 10 --g-source theory --params-json output/track_a/genparams_g1.2_k10.json
+--gain 0.8 --k 10 --g-source fitted --params-json output/track_a/genparams_g0.8_k10.json
+--gain 1.0 --k 10 --g-source fitted --params-json output/track_a/genparams_g1.0_k10.json
+--gain 1.2 --k 10 --g-source fitted --params-json output/track_a/genparams_g1.2_k10.json

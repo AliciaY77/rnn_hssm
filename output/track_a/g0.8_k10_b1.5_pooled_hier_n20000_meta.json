@@ -1,0 +1,125 @@
+{
+  "tag": "g0.8_k10_b1.5_pooled_hier_n20000",
+  "gain": 0.8,
+  "k": 10.0,
+  "bound": 1.5,
+  "seed_filter": 0,
+  "offset_s": 0.3,
+  "t_fixed": 0.35,
+  "t_native": 0.004999999999999999,
+  "t_eps_native": 0.001,
+  "draws": 1000,
+  "tune": 1000,
+  "chains": 4,
+  "total_draws": 4000,
+  "target_accept": 0.95,
+  "n_divergences": 0,
+  "divergence_frac": 0.0,
+  "r_hat_max": 1.01,
+  "ess_bulk_min": 222.0,
+  "sampling_minutes": 86.62495646079381,
+  "edge_mass": {
+    "a": 0.0,
+    "g": 0.963,
+    "v_at_0p15": 0.0,
+    "v_at_0": 0.0,
+    "z": 0.0
+  },
+  "edge_tol": 0.02,
+  "box": {
+    "v": [
+      -2.0,
+      2.0
+    ],
+    "a": [
+      0.3,
+      3.0
+    ],
+    "z": [
+      0.1,
+      0.9
+    ],
+    "g": [
+      -1.0,
+      1.0
+    ],
+    "t": [
+      0.001,
+      2.0
+    ]
+  },
+  "priors": "hierarchical, link_settings=log_logit, explicit wide normals on the logit scale",
+  "hierarchical": true,
+  "link_settings": "log_logit",
+  "prior_spec": {
+    "v": {
+      "Intercept": {
+        "name": "Normal",
+        "mu": 0.0,
+        "sigma": 1.5
+      },
+      "coherence_signed": {
+        "name": "Normal",
+        "mu": 0.0,
+        "sigma": 30.0
+      }
+    },
+    "a": {
+      "Intercept": {
+        "name": "Normal",
+        "mu": 0.0,
+        "sigma": 1.5
+      }
+    },
+    "g": {
+      "Intercept": {
+        "name": "Normal",
+        "mu": 0.0,
+        "sigma": 1.5
+      }
+    }
+  },
+  "smoke": false,
+  "hssm_version": "0.2.4",
+  "sampler": "nuts_numpyro",
+  "posterior_mean": {
+    "v_Intercept": -0.040605636522046774,
+    "v_coherence_signed": 9.323406219482422,
+    "z": 0.496762752532959,
+    "a_Intercept": -0.6838176250457764,
+    "g_Intercept": 5.554232597351074,
+    "v_1|seed_sigma": 0.17918990552425385,
+    "a_1|seed_sigma": 0.0765773132443428,
+    "g_1|seed_sigma": 0.2549051344394684
+  },
+  "derived_mean": {
+    "v(0.15)": 1.1812920416177335,
+    "v(0)": -0.040581424103856185,
+    "v(-0.15)": -1.2328758292764688,
+    "g_model": 0.990918561516814,
+    "a_model": 1.2056390374742887,
+    "g_native": 9.909185615168141,
+    "a_native": 0.38125653944318505,
+    "v_native(0.15)": 3.735573433342454
+  },
+  "posterior_mean_natural": {
+    "v_Intercept": -0.040581424103856185,
+    "v_coherence_signed": 8.1458231048106,
+    "a": 1.2056390374742887,
+    "z": 0.496762752532959,
+    "g": 0.990918561516814
+  },
+  "data_csv": "/oscar/home/igrahek/rnn_hssm/data/processed/fixed_bound/hssm_ready_nxx1_fixed_b1.5_g0.8.csv",
+  "n_all_rows": 38640,
+  "n_seeds_all": 20,
+  "n_seeds": 20,
+  "n_rows_after_seed_filter": 38640,
+  "n_fitted": 20000,
+  "subsample": "stratified 1000/seed -> 20000",
+  "omission_frac": 0.03400000000000003,
+  "rt_min_native": 0.006,
+  "rt_median_native": 0.145,
+  "rt_max_native": 0.75,
+  "p_choice_plus": 0.48435,
+  "accuracy": 0.8478
+}

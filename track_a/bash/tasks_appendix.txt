@@ -1,0 +1,2 @@
+--gain 1.0 --k 10 --data-csv data/processed/fixed_bound/hssm_ready_nxx1_weibull_g1.0_s42.csv --tag appendix_weibull_g1.0_k10_s42
+--gain 1.0 --k 4 --data-csv data/processed/fixed_bound/hssm_ready_nxx1_weibull_g1.0_s42.csv --tag appendix_weibull_g1.0_k4_s42

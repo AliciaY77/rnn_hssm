@@ -1,0 +1,1 @@
+--gain 1.0 --k 10 --n-sub 2000 --tag timing_g1.0_k10_n2000

@@ -1,0 +1,2 @@
+tag,gain,k,n_draws,n_sim_per_coh,omit_obs,omit_sim,med_abs_qerr_correct_ms,max_abs_qerr_correct_ms,med_abs_qerr_error_ms,max_abs_qerr_error_ms,max_abs_acc_err,minutes
+g1.0_k10_b1.5_s42,1.0,10.0,5,250,0.0020000000000000018,0.0007272727272727279,4.5364509582519545,36.53559875488281,6.38650817871094,43.31904907226544,0.11390229986687267,0.005701597531636556

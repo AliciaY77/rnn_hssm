@@ -27,14 +27,20 @@ sets describe the same RT distributions. Every good boxed fit has g at or near +
 | 1.0 | 0.13 | 0.36 | 4.0 | +4.4 | 3 |
 | 1.2 | 0.14 | 0.28 | 4.2 | +9.3 | 6 |
 
-LAN box: a ≥ 0.3, |drift| ≤ 2, |g| ≤ 1. All three main parameters are at or beyond an edge, and no time
-stretch moves the point inside (g scales as 1/k, drift and a as √k: bringing g to 1 needs k ≈ 9, which puts
-drift at ≈ 13). Gain 0.8 fits worse because the network's errors are as fast as its correct responses at high
+LAN box: a ≥ 0.3, |drift| ≤ 2, |g| ≤ 1. At native time all three main parameters are at or beyond an edge.
+**Time stretching (RT × k) rescales the same process as g → g/k, a → a·√k, v → v/√k** (verified by simulation;
+an earlier version of this note and of the issue-#1 comments had the drift scaling backwards). So a stretch of
+k ≈ 6 (gain 0.8) to k ≈ 10 (gain 1.2) does move the networks' OU description inside the box (e.g. gain 1.2:
+g 0.93, a 0.89, v 1.3 at k = 10). The boxed fits confirm it: at k = 8 the best gain-1.2 fit is interior
+(g = +0.70, a = 0.77, v = 1.6), and only the g ceiling still binds slightly (the native optimum maps to g = 1.16).
+Gain 0.8 fits worse because the network's errors are as fast as its correct responses at high
 coherence and a leaky OU makes errors slower. Relaxing only drift (to 8, k = 4) leaves g pinned at +1;
 relaxing only g (to 3) sends it to +2.4 (≈ +9.5 native) at gains 0.8 and 1.0.
 
-**So the OU model class describes the fixed-bound behaviour; the pretrained likelihood does not cover the
-region where these networks live.** A LAN retrained over a ≥ 0.05, |drift| ≤ 6, |g| ≤ 10 (native time) would.
+**So the OU model class describes the fixed-bound behaviour. The pretrained likelihood covers it only after a
+time stretch of roughly 8–10**, which is workable but was not what the original fits did (they used k = 1 with a
+0.3 s offset). More importantly, §3 shows that a well-specified OU fit to RT/choice marginals would not return
+the theoretically expected g even then.
 
 ## 3. But the fitted g does not track the theoretical regime — it tracks the bound
 
@@ -62,7 +68,8 @@ mixture of fast and slow crossings, and gain 0.8 loses two thirds of its trials 
 
 ## 4. Conclusions
 
-1. The pretrained OU LAN is unusable for these networks at any time stretch (a, drift and g all outside its box).
+1. The pretrained OU LAN can only represent these networks after stretching time by ≈ 8–10 (at native time a,
+   drift and g are all outside its box; the fits that were run used no stretch).
 2. A retrained LAN would fit the fixed-bound data well, but the g it returns would be leaky at every gain and
    would not reproduce the leaky → perfect → attractive transition; that transition is not in the marginal
    RT/choice distributions under a low threshold.

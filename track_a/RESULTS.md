@@ -210,6 +210,37 @@ conservative. The omission fractions are small at two of the three gains (3.40 %
 and the gain with the largest truncation (0.8) is the one with the *most* leaky estimate — the opposite
 of what the truncation bias would produce.
 
+## 6b. Recovery at k = 10 (job 6614167): the pipeline *can* see instability — the data never show it
+
+`track_a/recover.py`, `output/track_a/recovery_table.csv`. Six datasets of 20 000 trials each, simulated
+from the pooled posterior-mean parameters with g replaced by the theoretical value or by the fitted value,
+same 750 ms native horizon (non-crossers dropped), then refitted with the identical pipeline (same fixed t,
+same box-uniform priors, 4 × 1000/1000, target_accept 0.95). All six: R-hat 1.00, ESS_bulk ≥ 1525,
+**0 divergences**, 15–21 min. g > 0 = leaky.
+
+| g source | gain | true g (native) | recovered g [94 % HDI] (native) | sign | HDI covers truth | omissions | edge mass g |
+|---|---|---|---|---|---|---|---|
+| theory | 0.8 | +0.430 (+4.30) | **+0.430** [+0.356, +0.506] (+4.30) | ✓ | **yes** | 0.30 % | 0.00 |
+| theory | 1.0 | −0.160 (−1.60) | **−0.015** [−0.107, +0.085] (−0.15) | ✓ | no | 0.01 % | 0.00 |
+| theory | 1.2 | −0.620 (−6.20) | **−0.243** [−0.369, −0.121] (−2.43) | ✓ | no | 0.00 % | 0.00 |
+| fitted | 0.8 | +0.979 (+9.79) | +0.651 [+0.581, +0.723] (+6.51) | ✓ | no | 1.52 % | 0.00 |
+| fitted | 1.0 | +0.940 (+9.40) | +0.786 [+0.717, +0.853] (+7.86) | ✓ | no | 0.21 % | 0.00 |
+| fitted | 1.2 | +0.908 (+9.08) | +0.763 [+0.692, +0.834] (+7.63) | ✓ | no | 0.02 % | 0.00 |
+
+**Sign of g recovered 6/6. 94 % HDI covers the truth 1/6** — the plan's gate was ≥ 4/6, so that gate is
+*not* met and the magnitudes must not be read as estimates. Two things matter for the interpretation:
+
+1. **The pipeline is not biased toward "leaky".** When the generating g is negative the fit returns a
+   negative g, and at gain 1.2 the 94 % HDI excludes zero ([−0.369, −0.121]). The same pipeline on the
+   real data returns +0.92 to +1.00 with the HDI excluding zero from the other side. So "leaky at every
+   gain" is a statement about the data, not about the machinery.
+2. **The bias is a shrinkage toward zero, not toward the ceiling** (−0.62 → −0.24, +0.98 → +0.65). Even
+   when the truth is g = +0.94, the refit returns +0.79 with edge mass 0.00 — it does *not* re-pin at +1.
+   The real data therefore demand *more* leak than any parameter vector inside the box can generate,
+   which is exactly the §1 diagnosis.
+
+The one dataset whose HDI covers the truth is the only one whose true g is comfortably interior (+0.43).
+
 ## 7. Appendix: the original Weibull-collapsing-bound data (job 6613838)
 
 `track_a/make_weibull_appendix.py` reformats the stored Weibull outcome from the SIM-A per-trial cache

@@ -197,19 +197,21 @@ def what_gfig():
     bnd = load_bounded()
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
     ax = axes[0]
-    off = {"route 1 MLE": -0.035, "route 1 Bayes": -0.012, "route 2 (no hit term)": 0.012,
-           "route 2 (hit term)": 0.035}
+    off = {"route 1 MLE": -0.042, "route 1 Bayes": -0.021, "route 2 (no hit term)": 0.0,
+           "route 2 (hit term, deadline commitment)": 0.021, "route 2 (hit term, crossing time)": 0.042}
     series = [("route 1 MLE", m, "g", "g_lo", "g_hi", "C0")]
     if b is not None:
         series.append(("route 1 Bayes", b, "g_mean", "g_hdi_lo", "g_hdi_hi", "C1"))
     if len(bnd):
-        for hm, lab, c in (("none", "route 2 (no hit term)", "C2"), ("cross", "route 2 (hit term)", "C3")):
+        for hm, lab, c in (("none", "route 2 (no hit term)", "C2"),
+                           ("term", "route 2 (hit term, deadline commitment)", "C4"),
+                           ("cross", "route 2 (hit term, crossing time)", "C3")):
             d = bnd[bnd.hit_mode == hm]
             if len(d):
                 series.append((lab, d, "g", "g_lo", "g_hi", c))
     for lab, d, gc, lo, hi, c in series:
         for gain, dd in d.groupby("gain"):
-            x = np.full(len(dd), gain) + off[lab] + np.linspace(-0.008, 0.008, len(dd))
+            x = np.full(len(dd), gain) + off[lab] + np.linspace(-0.007, 0.007, len(dd))
             ax.errorbar(x, dd[gc], yerr=[np.maximum(dd[gc] - dd[lo], 0), np.maximum(dd[hi] - dd[gc], 0)],
                         fmt="o", ms=3, lw=.7, color=c, alpha=.7,
                         label=lab if gain == 0.8 else None)

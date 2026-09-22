@@ -36,11 +36,11 @@ def main():
         if not summ_path.exists():
             print("no summary for", tag)
             continue
+        if tag.startswith("recover_"):
+            continue            # recovery fits get their own table below (different meta schema)
         m = json.loads(meta_path.read_text())
         s = pd.read_csv(summ_path).set_index("param")
-        if tag.startswith("recover_"):
-            kind = "recovery"
-        elif tag.startswith("appendix_"):
+        if tag.startswith("appendix_"):
             kind = "appendix_weibull"
         elif tag.startswith("timing_"):
             kind = "timing"
@@ -65,7 +65,7 @@ def main():
             r_hat_max=m["r_hat_max"], ess_bulk_min=m["ess_bulk_min"],
             minutes=m["sampling_minutes"], priors=m.get("priors"),
             edge_a=m["edge_mass"]["a"], edge_g=m["edge_mass"]["g"],
-            edge_v0p15=m["edge_mass"]["v_at_0p15"], edge_z=m["edge_mass"]["z"],
+            edge_v0p15=m["edge_mass"]["v_at_0p15"], edge_z=m["edge_mass"].get("z", np.nan),
         )
         for p in PARAMS:
             if p not in s.index:

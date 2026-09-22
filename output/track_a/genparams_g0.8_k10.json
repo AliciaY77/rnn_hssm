@@ -1,0 +1,9 @@
+{
+  "v_Intercept": -0.029997597702013965,
+  "v_coherence_signed": 8.373956986449999,
+  "a": 1.1928232291875,
+  "z": 0.49678646876375,
+  "g": 0.97943658723375,
+  "t_fixed": 0.35,
+  "source": "mean over the 20 per-network k=10 posteriors (jobs 6613594); used so step 7 could start before the pooled fits finished"
+}

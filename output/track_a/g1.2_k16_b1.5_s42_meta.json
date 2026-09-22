@@ -1,0 +1,113 @@
+{
+  "tag": "g1.2_k16_b1.5_s42",
+  "gain": 1.2,
+  "k": 16.0,
+  "bound": 1.5,
+  "seed_filter": 42,
+  "offset_s": 0.3,
+  "t_fixed": 0.428,
+  "t_native": 0.008,
+  "t_eps_native": 0.001,
+  "draws": 1000,
+  "tune": 1000,
+  "chains": 4,
+  "total_draws": 4000,
+  "target_accept": 0.95,
+  "n_divergences": 0,
+  "divergence_frac": 0.0,
+  "r_hat_max": 1.0,
+  "ess_bulk_min": 1785.0,
+  "sampling_minutes": 1.6311389009157817,
+  "edge_mass": {
+    "a": 0.0,
+    "g": 0.42675,
+    "v_at_0p15": 0.0,
+    "v_at_0": 0.0,
+    "z": 0.0
+  },
+  "edge_tol": 0.02,
+  "box": {
+    "v": [
+      -2.0,
+      2.0
+    ],
+    "a": [
+      0.3,
+      3.0
+    ],
+    "z": [
+      0.1,
+      0.9
+    ],
+    "g": [
+      -1.0,
+      1.0
+    ],
+    "t": [
+      0.001,
+      2.0
+    ]
+  },
+  "priors": "box uniform (explicit)",
+  "hierarchical": false,
+  "prior_spec": {
+    "v": {
+      "Intercept": {
+        "name": "Uniform",
+        "lower": -2.0,
+        "upper": 2.0
+      },
+      "coherence_signed": {
+        "name": "Uniform",
+        "lower": -13.333333333333334,
+        "upper": 13.333333333333334
+      }
+    },
+    "a": {
+      "name": "Uniform",
+      "lower": 0.3,
+      "upper": 3.0
+    },
+    "z": {
+      "name": "Uniform",
+      "lower": 0.1,
+      "upper": 0.9
+    },
+    "g": {
+      "name": "Uniform",
+      "lower": -1.0,
+      "upper": 1.0
+    }
+  },
+  "smoke": false,
+  "hssm_version": "0.2.4",
+  "sampler": "nuts_numpyro",
+  "posterior_mean": {
+    "v_Intercept": 0.0784657201665777,
+    "v_coherence_signed": 7.3468732833862305,
+    "a": 1.088306188583374,
+    "z": 0.5538371801376343,
+    "g": 0.9671456813812256
+  },
+  "derived_mean": {
+    "v(0.15)": 1.180496733729853,
+    "v(0)": 0.0784657201665777,
+    "v(-0.15)": -1.0235652933966977,
+    "g_native": 15.47433090209961,
+    "a_native": 0.2720765471458435,
+    "v_native(0.15)": 4.721986934919412
+  },
+  "data_csv": "/oscar/home/igrahek/rnn_hssm/data/processed/fixed_bound/hssm_ready_nxx1_fixed_b1.5_g1.2.csv",
+  "n_all_rows": 39988,
+  "n_seeds_all": 20,
+  "n_seeds": 1,
+  "n_rows_after_seed_filter": 2000,
+  "n_fitted": 2000,
+  "subsample": "all",
+  "omission_frac": 0.0,
+  "rt_min_native": 0.009,
+  "rt_median_native": 0.08,
+  "rt_max_native": 0.741,
+  "p_choice_plus": 0.5405,
+  "accuracy": 0.7955
+}

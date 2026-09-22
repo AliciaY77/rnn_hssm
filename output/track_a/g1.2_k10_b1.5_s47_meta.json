@@ -1,0 +1,112 @@
+{
+  "tag": "g1.2_k10_b1.5_s47",
+  "gain": 1.2,
+  "k": 10.0,
+  "bound": 1.5,
+  "seed_filter": 47,
+  "offset_s": 0.3,
+  "t_fixed": 0.37,
+  "t_native": 0.007000000000000001,
+  "t_eps_native": 0.001,
+  "draws": 1000,
+  "tune": 1000,
+  "chains": 4,
+  "total_draws": 4000,
+  "target_accept": 0.95,
+  "n_divergences": 0,
+  "divergence_frac": 0.0,
+  "r_hat_max": 1.0,
+  "ess_bulk_min": 1645.0,
+  "sampling_minutes": 1.9193766156832377,
+  "edge_mass": {
+    "a": 0.0,
+    "g": 0.21375,
+    "v_at_0p15": 0.0,
+    "v_at_0": 0.0,
+    "z": 0.0
+  },
+  "edge_tol": 0.02,
+  "box": {
+    "v": [
+      -2.0,
+      2.0
+    ],
+    "a": [
+      0.3,
+      3.0
+    ],
+    "z": [
+      0.1,
+      0.9
+    ],
+    "g": [
+      -1.0,
+      1.0
+    ],
+    "t": [
+      0.001,
+      2.0
+    ]
+  },
+  "priors": "box uniform (explicit)",
+  "prior_spec": {
+    "v": {
+      "Intercept": {
+        "name": "Uniform",
+        "lower": -2.0,
+        "upper": 2.0
+      },
+      "coherence_signed": {
+        "name": "Uniform",
+        "lower": -13.333333333333334,
+        "upper": 13.333333333333334
+      }
+    },
+    "a": {
+      "name": "Uniform",
+      "lower": 0.3,
+      "upper": 3.0
+    },
+    "z": {
+      "name": "Uniform",
+      "lower": 0.1,
+      "upper": 0.9
+    },
+    "g": {
+      "name": "Uniform",
+      "lower": -1.0,
+      "upper": 1.0
+    }
+  },
+  "smoke": false,
+  "hssm_version": "0.2.4",
+  "sampler": "nuts_numpyro",
+  "posterior_mean": {
+    "v_Intercept": -0.05045246604656221,
+    "v_coherence_signed": 9.1238374710083,
+    "a": 0.8608696460723877,
+    "z": 0.47327300906181335,
+    "g": 0.9327098727226257
+  },
+  "derived_mean": {
+    "v(0.15)": 1.318123345786581,
+    "v(0)": -0.05045246604656221,
+    "v(-0.15)": -1.4190282778797054,
+    "g_native": 9.327099800109863,
+    "a_native": 0.272230863571167,
+    "v_native(0.15)": 4.168272009727305
+  },
+  "data_csv": "/oscar/home/igrahek/rnn_hssm/data/processed/fixed_bound/hssm_ready_nxx1_fixed_b1.5_g1.2.csv",
+  "n_all_rows": 39988,
+  "n_seeds_all": 20,
+  "n_seeds": 1,
+  "n_rows_after_seed_filter": 2000,
+  "n_fitted": 2000,
+  "subsample": "all",
+  "omission_frac": 0.0,
+  "rt_min_native": 0.008,
+  "rt_median_native": 0.068,
+  "rt_max_native": 0.661,
+  "p_choice_plus": 0.4845,
+  "accuracy": 0.794
+}

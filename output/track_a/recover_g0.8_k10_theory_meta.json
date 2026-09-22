@@ -1,0 +1,42 @@
+{
+  "tag": "recover_g0.8_k10_theory",
+  "gain": 0.8,
+  "k": 10.0,
+  "g_source": "theory",
+  "generating": {
+    "v_Intercept": -0.029997597702013965,
+    "v_coherence_signed": 8.373956986449999,
+    "a": 1.1928232291875,
+    "z": 0.49678646876375,
+    "g": 0.43,
+    "t": 0.35
+  },
+  "generating_from": "output/track_a/genparams_g0.8_k10.json",
+  "generating_note": "mean over the 20 per-network k=10 posteriors (jobs 6613594); used so step 7 could start before the pooled fits finished",
+  "g_true": 0.43,
+  "g_true_native": 4.3,
+  "g_mean": 0.43041208386421204,
+  "g_native_mean": 4.30412083864212,
+  "g_hdi3": 0.35574607372283934,
+  "g_hdi97": 0.5058973705768585,
+  "g_native_hdi3": 3.5574607372283933,
+  "g_native_hdi97": 5.058973705768585,
+  "sign_recovered": true,
+  "hdi_covers_truth": true,
+  "n_requested": 20001,
+  "n_fitted": 19940,
+  "omission_frac": 0.0030498475076246186,
+  "t_fixed": 0.35,
+  "horizon_stretched": 7.8,
+  "n_divergences": 0,
+  "total_draws": 4000,
+  "r_hat_max": 1.0,
+  "ess_bulk_min": 1862.0,
+  "sampling_minutes": 18.528709038098654,
+  "edge_mass": {
+    "a": 0.0,
+    "g": 0.0,
+    "v_at_0p15": 0.0
+  },
+  "hssm_version": "0.2.4"
+}

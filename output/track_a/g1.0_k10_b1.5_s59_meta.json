@@ -1,0 +1,112 @@
+{
+  "tag": "g1.0_k10_b1.5_s59",
+  "gain": 1.0,
+  "k": 10.0,
+  "bound": 1.5,
+  "seed_filter": 59,
+  "offset_s": 0.3,
+  "t_fixed": 0.36,
+  "t_native": 0.006,
+  "t_eps_native": 0.001,
+  "draws": 1000,
+  "tune": 1000,
+  "chains": 4,
+  "total_draws": 4000,
+  "target_accept": 0.95,
+  "n_divergences": 0,
+  "divergence_frac": 0.0,
+  "r_hat_max": 1.0,
+  "ess_bulk_min": 1521.0,
+  "sampling_minutes": 1.6661697308222452,
+  "edge_mass": {
+    "a": 0.0,
+    "g": 0.0,
+    "v_at_0p15": 0.0,
+    "v_at_0": 0.0,
+    "z": 0.0
+  },
+  "edge_tol": 0.02,
+  "box": {
+    "v": [
+      -2.0,
+      2.0
+    ],
+    "a": [
+      0.3,
+      3.0
+    ],
+    "z": [
+      0.1,
+      0.9
+    ],
+    "g": [
+      -1.0,
+      1.0
+    ],
+    "t": [
+      0.001,
+      2.0
+    ]
+  },
+  "priors": "box uniform (explicit)",
+  "prior_spec": {
+    "v": {
+      "Intercept": {
+        "name": "Uniform",
+        "lower": -2.0,
+        "upper": 2.0
+      },
+      "coherence_signed": {
+        "name": "Uniform",
+        "lower": -13.333333333333334,
+        "upper": 13.333333333333334
+      }
+    },
+    "a": {
+      "name": "Uniform",
+      "lower": 0.3,
+      "upper": 3.0
+    },
+    "z": {
+      "name": "Uniform",
+      "lower": 0.1,
+      "upper": 0.9
+    },
+    "g": {
+      "name": "Uniform",
+      "lower": -1.0,
+      "upper": 1.0
+    }
+  },
+  "smoke": false,
+  "hssm_version": "0.2.4",
+  "sampler": "nuts_numpyro",
+  "posterior_mean": {
+    "v_Intercept": -0.07263157420957947,
+    "v_coherence_signed": 8.66687297821045,
+    "a": 1.1458133459091187,
+    "z": 0.5953361988067627,
+    "g": 0.4155581593513489
+  },
+  "derived_mean": {
+    "v(0.15)": 1.22739939231073,
+    "v(0)": -0.07263157420957947,
+    "v(-0.15)": -1.372662540729889,
+    "g_native": 4.155581474304199,
+    "a_native": 0.36233794689178467,
+    "v_native(0.15)": 3.8813776784084664
+  },
+  "data_csv": "/oscar/home/igrahek/rnn_hssm/data/processed/fixed_bound/hssm_ready_nxx1_fixed_b1.5_g1.0.csv",
+  "n_all_rows": 39881,
+  "n_seeds_all": 20,
+  "n_seeds": 1,
+  "n_rows_after_seed_filter": 1998,
+  "n_fitted": 1998,
+  "subsample": "all",
+  "omission_frac": 0.0010000000000000009,
+  "rt_min_native": 0.007,
+  "rt_median_native": 0.103,
+  "rt_max_native": 0.631,
+  "p_choice_plus": 0.5315315315315315,
+  "accuracy": 0.8223223223223223
+}

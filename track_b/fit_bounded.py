@@ -19,9 +19,11 @@ the network's |dv| = 2.0 level -- that is the judgment call, recorded in track_b
     --hit-mode none   : choices only
 to the choice log-likelihood.  Fits are run with and without it.
 
-Optimiser: Nelder-Mead on (g, v, log B, a_bias) from the route-1 MLE with B in {1, 3, 10} (three starts,
-to probe the leak/bound degeneracy), then a profile likelihood on g (11 points, re-optimising the other
-three, warm-started) with the 1.92-unit drop as the 95 % interval.
+Optimiser: Nelder-Mead on (g, v, log B, a_bias), started from the three best points of a coarse grid over
+B (0.5 ... 50) x a_bias (route-1 value and 0) evaluated at the route-1 MLE -- this probes the leak/bound
+degeneracy and avoids the frozen-at-t=0 trap that a fixed {1, 3, 10} falls into whenever route 1 puts
+|a_bias| above the trial bound.  Then a profile likelihood on g (11 points, re-optimising the other three,
+warm-started) with the 1.92-unit drop as the 95 % interval.  --no-adaptive-starts restores {1, 3, 10}.
 
 Usage (one task):
     python track_b/fit_bounded.py --seed 42 --gain 1.2 --hit-mode none --M 300
@@ -111,6 +113,11 @@ def _make_jax(rel, M, noise_seed):
 
 # ------------------------------------------------------------------------ objective
 def make_objective(sim, y, hit=None, cross_cat=None, hit_mode="none", eps=1e-4, M=300):
+    """The start point must lie INSIDE the bound: |a_bias| >= B freezes the accumulator at t = 0, which
+    is both meaningless and a trap for Nelder-Mead (the likelihood is then flat in g and v), so that
+    region gets a linear barrier instead of a plateau.  The bound-hit probabilities are smoothed
+    Krichevsky-Trofimov style, (count + 0.5)/(M + K/2), so a bin the M realisations happen to miss costs
+    ~log(600) rather than log(1/eps) and the surface stays differentiable."""
     N = len(y)
     idx = np.arange(N)
 
@@ -119,12 +126,13 @@ def make_objective(sim, y, hit=None, cross_cat=None, hit_mode="none", eps=1e-4, 
         B = float(np.exp(logB))
         if not (-40 <= g <= 40 and 0 < v <= 1e4 and 0.05 <= B <= 500 and abs(a_bias) <= 20):
             return 1e9
+        if abs(a_bias) >= B:                       # frozen at t = 0: barrier, not plateau
+            return 1e6 + 1e4 * (abs(a_bias) - B)
         p, counts = sim(g, v, B, a_bias)
         p = np.clip(p, eps, 1 - eps)
         out = -float(np.sum(np.where(y == 1, np.log(p), np.log1p(-p))))
         if hit_mode != "none":
-            pk = np.clip(counts / counts.sum(0, keepdims=True), eps, None)
-            pk /= pk.sum(0, keepdims=True)
+            pk = (counts + 0.5) / (counts.sum(0, keepdims=True) + 0.5 * N_CAT)
             if hit_mode == "bern":
                 ph = np.clip(1.0 - pk[N_CAT - 1], eps, 1 - eps)
                 out -= float(np.sum(np.where(hit == 1, np.log(ph), np.log1p(-ph))))
@@ -158,6 +166,9 @@ def main():
     ap.add_argument("--max-iter", type=int, default=300)
     ap.add_argument("--profile-iter", type=int, default=80)
     ap.add_argument("--b-starts", type=float, nargs="+", default=[1.0, 3.0, 10.0])
+    ap.add_argument("--b-grid", type=float, nargs="+",
+                    default=[0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 20.0, 50.0])
+    ap.add_argument("--no-adaptive-starts", dest="adaptive_starts", action="store_false")
     ap.add_argument("--no-profile", action="store_true")
     ap.add_argument("--n-profile", type=int, default=11)
     ap.add_argument("--out", type=pathlib.Path, default=None)
@@ -199,12 +210,29 @@ def main():
     per_eval = time.time() - t0
     print(f"per evaluation: {per_eval:.2f}s", flush=True)
 
+    # starts: a coarse grid over B (and over a_bias in {route-1, 0}) evaluated at the route-1 MLE,
+    # keeping the best three.  A fixed {1, 3, 10} is not enough: where route 1 puts |a_bias| above the
+    # trial bound the accumulator starts frozen and Nelder-Mead cannot escape.
+    if a.adaptive_starts:
+        cands = []
+        for B0 in a.b_grid:
+            for ab in dict.fromkeys([r1["a_bias"], 0.0]):
+                if abs(ab) >= 0.95 * B0:
+                    continue
+                x0 = [r1["g"], r1["v"], np.log(B0), ab]
+                cands.append((nll(x0), x0))
+        cands.sort(key=lambda c: c[0])
+        starts = [c[1] for c in cands[:3]]
+        print("  start grid: " + ", ".join(f"B={np.exp(x[2]):.2f}/a={x[3]:+.2f}:{f:.1f}"
+                                           for f, x in cands[:6]), flush=True)
+    else:
+        starts = [[r1["g"], r1["v"], np.log(B0), r1["a_bias"]] for B0 in a.b_starts]
     best = None
-    for B0 in a.b_starts:
-        x0 = [r1["g"], r1["v"], np.log(B0), r1["a_bias"]]
+    for x0 in starts:
+        B0 = float(np.exp(x0[2]))
         r = nm(nll, x0, steps=[0.8, 5.0, 0.4, 0.15], maxiter=a.max_iter)
         r = nm(nll, r.x, steps=[0.3, 2.0, 0.15, 0.05], maxiter=a.max_iter // 2)
-        print(f"  B0 = {B0}: nll {r.fun:.3f} g = {r.x[0]:+.3f} v = {r.x[1]:.2f} "
+        print(f"  B0 = {B0:.2f}: nll {r.fun:.3f} g = {r.x[0]:+.3f} v = {r.x[1]:.2f} "
               f"B = {np.exp(r.x[2]):.3f} a_bias = {r.x[3]:+.3f} ({r.nit} it)", flush=True)
         if best is None or r.fun < best.fun:
             best = r

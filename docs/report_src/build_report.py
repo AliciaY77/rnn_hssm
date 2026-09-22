@@ -32,7 +32,7 @@ def fig(path, width_in, caption):
 s = []
 s.append(P("OU accumulator fits to the gain-modulated RNNs: what failed and what works", T))
 s.append(P(f"Ivan Grahek, {datetime.date.today():%d %B %Y}. Code and results: branches <font face='DVM'>issue-1-ou-param-recovery</font> and <font face='DVM'>kernel-ou-fit</font> of <font face='DVM'>rnn_hssm</font>.", SM))
-s.append(Spacer(1, 10))
+s.append(Spacer(1, 6))
 
 s.append(P("The theory says gain moves the trained NXX1 network from a leaky integrator (gain 0.8) to near-perfect integration (1.0) to an unstable, attractor-like regime (1.2). We wanted an Ornstein-Uhlenbeck (OU) accumulator fitted to behaviour to show this: the OU leak parameter g should go from positive to zero to negative across gain. The HSSM OU fits did not converge. This memo explains why, and shows that a different fit of the same model recovers the transition."))
 
@@ -65,9 +65,8 @@ s.append(fig(ROOT / "output/kernel_fit/ou_kernel_fits_per_network.png", 5.0, "Fi
 s.append(P("One caveat. Three of the 60 single-network fits landed on g of about +12 with a low sticky bound. Strong leak with very early commitment also gives a primacy kernel; this is the bound-versus-leak trade-off known from the Brunton model. It does not occur in the pooled fits, and it can be broken with the fraction of trials whose dv reaches the bound before the deadline, or with the RTs."))
 
 s.append(P("4. Next steps", H))
-s.append(P("The transition is recoverable from behaviour with an accumulator model when the fit is conditioned on each trial's evidence, and not when it is fitted to RT and choice distributions. The HSSM problems (sign convention, no time stretch, collapsing bound, free non-decision time) are all fixable, but fixing them would give converged fits that still say leaky at every gain. For a parametric confirmation the next step is a likelihood-based Brunton fit, choice given evidence stream with leak, bound and sensory noise free, with the bound-hit fraction added to break the degeneracy. The pooled kernel fit above takes about two minutes on a laptop."))
-s.append(Spacer(1, 4))
-s.append(P("Runs: original fits, Oscar, HSSM 0.3. Recovery, 60 HSSM 0.2.4 fits, Oscar jobs 6604819 and 6604891. Simulator search, ssm-simulators 0.8.3, Oscar jobs 6606075, 6606166, 6606270, 6606439. Evidence export and kernel fits, local, gain-controller-rnn at 1ca084b.", SM))
+s.append(P("The transition is recoverable from behaviour with an accumulator model when the fit is conditioned on each trial's evidence, and not when it is fitted to RT and choice distributions. The HSSM problems (sign convention, no time stretch, collapsing bound, free non-decision time) are all fixable, but fixing them would give converged fits that still say leaky at every gain. For a parametric confirmation the next step is a likelihood-based Brunton fit, choice given evidence stream with leak, bound and sensory noise free, with the bound-hit fraction added to break the degeneracy."))
+s.append(P("Runs: HSSM 0.3 (original fits) and 0.2.4 (recovery, Oscar jobs 6604819, 6604891); ssm-simulators 0.8.3 (Oscar jobs 6606075, 6606166, 6606270, 6606439); gain-controller-rnn at 1ca084b.", SM))
 
 def footer(c, d):
     c.saveState(); c.setFont("DV", 8); c.setFillColor(colors.grey); c.drawRightString(letter[0] - 0.9 * inch, 0.55 * inch, str(d.page)); c.restoreState()

@@ -85,6 +85,10 @@ def parse_args():
     p.add_argument("--n-draws-csv", type=int, default=400,
                    help="thinned posterior draws written to <tag>_draws.csv for the PPC scripts")
     p.add_argument("--data-csv", type=str, default="", help="override the input CSV (appendix fits)")
+    p.add_argument("--hier", action="store_true",
+                   help="hierarchical: v ~ 1 + coherence_signed + (1|seed), a ~ 1 + (1|seed), "
+                        "g ~ 1 + (1|seed); uses HSSM link_settings='log_logit' and HSSM's own priors, "
+                        "because box-uniform priors do not transfer to the group-offset parameterisation")
     p.add_argument("--default-priors", action="store_true",
                    help="use HSSM's own default priors instead of the explicit box-uniform ones")
     return p.parse_args()
@@ -146,6 +150,8 @@ def load_data(args):
         "response": raw.response_choice.values.astype(float),
         "coherence_signed": raw.coherence_signed.values.astype(float),
     })
+    if getattr(args, "hier", False):
+        df["seed"] = raw.seed.values.astype(str)
     meta = dict(
         data_csv=str(path), n_all_rows=n_all, n_seeds_all=n_seeds_all, n_seeds=n_seeds,
         n_rows_after_seed_filter=n_kept_full, n_fitted=int(len(df)), subsample=sub_note,
@@ -169,6 +175,7 @@ def main():
     tag = args.tag or (
         f"g{args.gain}_k{k:g}_b{args.bound}"
         + (f"_s{args.seed_filter}" if args.seed_filter else "_pooled")
+        + ("_hier" if args.hier else "")
         + (f"_n{args.n_sub}" if args.n_sub else "")
         + ("_smoke" if args.smoke else "")
     )
@@ -187,11 +194,18 @@ def main():
     if not (BOX["t"][0] <= t_fixed <= BOX["t"][1]):
         raise SystemExit(f"fixed t {t_fixed} outside the LAN box {BOX['t']}")
 
-    priors = None if args.default_priors else box_uniform_priors()
-    include = [dict(name="v", formula="v ~ 1 + coherence_signed", link="identity")]
-    if priors is not None:
-        include[0]["prior"] = priors["v"]
-    kw = {} if priors is None else dict(a=priors["a"], z=priors["z"], g=priors["g"])
+    if args.hier:
+        priors = None
+        include = [dict(name="v", formula="v ~ 1 + coherence_signed + (1|seed)"),
+                   dict(name="a", formula="a ~ 1 + (1|seed)"),
+                   dict(name="g", formula="g ~ 1 + (1|seed)")]
+        kw = dict(link_settings="log_logit")
+    else:
+        priors = None if args.default_priors else box_uniform_priors()
+        include = [dict(name="v", formula="v ~ 1 + coherence_signed", link="identity")]
+        if priors is not None:
+            include[0]["prior"] = priors["v"]
+        kw = {} if priors is None else dict(a=priors["a"], z=priors["z"], g=priors["g"])
 
     model = hssm.HSSM(
         data=df,
@@ -215,18 +229,22 @@ def main():
     print(f"sampling took {minutes:.1f} min", flush=True)
 
     post = idata.posterior
-    params = [p for p in ["v_Intercept", "v_coherence_signed", "a", "z", "g"] if p in post]
+    params = [p for p in ["v_Intercept", "v_coherence_signed", "a", "z", "g",
+                          "a_Intercept", "g_Intercept", "v_1|seed_sigma", "a_1|seed_sigma",
+                          "g_1|seed_sigma"] if p in post]
     summ = az.summary(idata, var_names=params, hdi_prob=0.94).reset_index().rename(columns={"index": "param"})
 
     # derived drifts and native-unit versions, with the same summary columns
     b0 = post["v_Intercept"].values
     b1 = post["v_coherence_signed"].values if "v_coherence_signed" in post else np.zeros_like(b0)
+    g_post = post["g_Intercept"].values if "g_Intercept" in post else post["g"].values
+    a_post = post["a_Intercept"].values if "a_Intercept" in post else post["a"].values
     derived = {
         "v(0.15)": b0 + COH_REF * b1,
         "v(0)": b0,
         "v(-0.15)": b0 - COH_REF * b1,
-        "g_native": post["g"].values * k,
-        "a_native": post["a"].values / np.sqrt(k),
+        "g_native": g_post * k,
+        "a_native": a_post / np.sqrt(k),
         "v_native(0.15)": (b0 + COH_REF * b1) * np.sqrt(k),
     }
     der = az.summary(az.convert_to_dataset({n: v for n, v in derived.items()}), hdi_prob=0.94)
@@ -234,11 +252,11 @@ def main():
     summ = pd.concat([summ, der], ignore_index=True)
 
     edges = dict(
-        a=edge_mass(post["a"].values, *BOX["a"]),
-        g=edge_mass(post["g"].values, *BOX["g"]),
+        a=edge_mass(a_post, *BOX["a"]),
+        g=edge_mass(g_post, *BOX["g"]),
         v_at_0p15=edge_mass(derived["v(0.15)"], *BOX["v"]),
         v_at_0=edge_mass(derived["v(0)"], *BOX["v"]),
-        z=edge_mass(post["z"].values, *BOX["z"]),
+        z=edge_mass(post["z"].values, *BOX["z"]) if "z" in post else np.nan,
     )
     n_div = int(idata.sample_stats["diverging"].values.sum()) if "diverging" in idata.sample_stats else -1
     total = int(draws * chains)
@@ -257,7 +275,9 @@ def main():
         n_divergences=n_div, divergence_frac=(n_div / total if total else np.nan),
         r_hat_max=float(np.nanmax(summ.r_hat.values)), ess_bulk_min=float(np.nanmin(summ.ess_bulk.values)),
         sampling_minutes=minutes, edge_mass=edges, edge_tol=EDGE_TOL, box=BOX,
-        priors="box uniform (explicit)" if priors is not None else "hssm defaults",
+        priors=("box uniform (explicit)" if priors is not None else
+                ("hssm defaults, link_settings=log_logit (hierarchical)" if args.hier else "hssm defaults")),
+        hierarchical=args.hier,
         prior_spec=priors, smoke=args.smoke, hssm_version=hssm.__version__, sampler=sampler,
         posterior_mean={p: float(post[p].values.mean()) for p in params},
         derived_mean={n: float(v.mean()) for n, v in derived.items()},
@@ -269,6 +289,10 @@ def main():
 
     # thinned posterior draws of the free parameters, so the PPC scripts can run without the netcdf
     flat = {p: post[p].values.reshape(-1) for p in params}
+    if args.hier:
+        flat = {"v_Intercept": post["v_Intercept"].values.reshape(-1),
+                "v_coherence_signed": post["v_coherence_signed"].values.reshape(-1),
+                "a": a_post.reshape(-1), "z": post["z"].values.reshape(-1), "g": g_post.reshape(-1)}
     n_flat = len(next(iter(flat.values())))
     take = np.linspace(0, n_flat - 1, min(args.n_draws_csv, n_flat)).astype(int)
     draws_df = pd.DataFrame({p: v[take] for p, v in flat.items()})

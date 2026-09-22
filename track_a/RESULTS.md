@@ -100,3 +100,21 @@ that fitting horizon-truncated data with an untruncated likelihood **biases g to
 conservative. The omission fractions are small at two of the three gains (3.40 % / 0.30 % / 0.03 %),
 and the gain with the largest truncation (0.8) is the one with the *most* leaky estimate — the opposite
 of what the truncation bias would produce.
+
+## 7. Appendix: the original Weibull-collapsing-bound data (job 6613838)
+
+`track_a/make_weibull_appendix.py` reformats the stored Weibull outcome from the SIM-A per-trial cache
+(`bounded_rt`, `choice`, `crossed`) into the same HSSM-ready columns; gain 1.0, seed 42, 2000 trials,
+0 % omissions, min RT 35 ms, median 285 ms, max 588 ms. Same corrected pipeline (fixed t, no lapse,
+signed-coherence drift, box-uniform priors). g > 0 = leaky.
+
+| data | k | t fixed | g mean [94 % HDI] | g_native per s | a | a_native | v(0.15) | R-hat | ESS_bulk | div | edge mass g |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Weibull, gain 1.0, s42 | 4 | 0.436 | **−0.106** [−0.367, +0.160] | −0.43 | 1.206 | 0.603 | 1.782 | 1.00 | 1742 | 0/4000 | 0.00 |
+| Weibull, gain 1.0, s42 | 10 | 0.640 | **−0.219** [−0.278, −0.154] | −2.19 | 2.193 | 0.694 | 1.173 | 1.00 | 1778 | 0/4000 | 0.00 |
+
+The collapse confound reproduces: on the *same network at the same gain*, the Weibull-bound readout
+gives **g < 0 (unstable)** with the 94 % HDI excluding zero at k = 10, while the constant-bound readout
+gives g at the leaky ceiling. This is the sign that the three original issue-#1 fits reported, and it is
+an artefact of the collapsing bound (which manufactures a long, flat RT tail), not a property of the
+network. It also shows the corrected pipeline is not hard-wired to return g > 0.

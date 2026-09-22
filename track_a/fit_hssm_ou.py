@@ -5,7 +5,10 @@ What is corrected relative to the original `model/fit_ornstein.py` fits (issue #
   * constant-bound data (issue #2), 20 networks, not the Weibull-collapse data, not seed 42 only;
   * time stretch k (default 10) so the networks' OU description falls INSIDE the pretrained LAN box
     (RT x k  <=>  g -> g/k, a -> a*sqrt(k), v -> v/sqrt(k));
-  * non-decision time FIXED (never fitted) at t = c + k * min(rt_native) with c = 0.3 s, passed as a float;
+  * non-decision time FIXED (never fitted) at t = c + k * (min(rt_native) - eps) with c = 0.3 s and
+    eps = 1 native ms (the data's own time step), passed as a float. The bare rule t = c + k*min(rt)
+    leaves the fastest trial with exactly zero decision time; an RT recorded as 6 ms means the crossing
+    happened in (5, 6] ms, so 5 ms is the natural floor. Every RT is then strictly above t;
   * no lapse mixture (p_outlier=None, lapse=None) -- the default 5 % Uniform(0, 20 s) lapse conflicts with
     the 750 ms horizon;
   * choice coding: `response_choice` (+1 = choice "+"), drift regressed on SIGNED coherence, because
@@ -76,6 +79,8 @@ def parse_args():
     p.add_argument("--target-accept", type=float, default=0.95)
     p.add_argument("--smoke", action="store_true", help="1 chain, 20 tune / 20 draws; pipeline check only")
     p.add_argument("--rng", type=int, default=0, help="seed for the subsample and the sampler")
+    p.add_argument("--t-eps-native", type=float, default=0.001,
+                   help="native seconds subtracted from min RT before fixing t (1 ms = the data's time step)")
     p.add_argument("--tag", type=str, default="")
     p.add_argument("--n-draws-csv", type=int, default=400,
                    help="thinned posterior draws written to <tag>_draws.csv for the PPC scripts")
@@ -170,9 +175,10 @@ def main():
     print(f"=== {tag} ===", flush=True)
 
     df, dmeta, rt_min_native = load_data(args)
-    t_fixed = round(OFFSET + k * rt_min_native, 6)
+    t_fixed = round(OFFSET + k * max(rt_min_native - args.t_eps_native, 0.0), 6)
     below = int((df.rt <= t_fixed).sum())
-    print(f"n = {len(df)}  k = {k}  t_fixed = {t_fixed:.4f} s  (min stretched RT {df.rt.min():.4f})", flush=True)
+    print(f"n = {len(df)}  k = {k}  t_fixed = {t_fixed:.4f} s  (min stretched RT {df.rt.min():.4f}, "
+          f"min native RT {rt_min_native*1000:.0f} ms, t_native {(t_fixed-OFFSET)/k*1000:.1f} ms)", flush=True)
     print(f"RT stretched: min {df.rt.min():.3f} med {df.rt.median():.3f} max {df.rt.max():.3f} s;"
           f" P(response=+1) = {(df.response == 1).mean():.3f}; omissions {dmeta['omission_frac']*100:.2f} %",
           flush=True)
@@ -246,7 +252,7 @@ def main():
 
     meta = dict(
         tag=tag, gain=args.gain, k=k, bound=args.bound, seed_filter=args.seed_filter,
-        offset_s=OFFSET, t_fixed=t_fixed, t_native=(t_fixed - OFFSET) / k,
+        offset_s=OFFSET, t_fixed=t_fixed, t_native=(t_fixed - OFFSET) / k, t_eps_native=args.t_eps_native,
         draws=draws, tune=tune, chains=chains, total_draws=total, target_accept=args.target_accept,
         n_divergences=n_div, divergence_frac=(n_div / total if total else np.nan),
         r_hat_max=float(np.nanmax(summ.r_hat.values)), ess_bulk_min=float(np.nanmin(summ.ess_bulk.values)),

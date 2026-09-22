@@ -9,12 +9,23 @@ and compare with the network data per |coherence|:
   * accuracy (P(choice matches sign(coherence))), P(choice = +) at coherence 0,
   * omission fraction.
 
-ssm-simulators segfaults for max_t ~ 0.75 s, so we always simulate to at least 2 s and truncate afterwards.
+SIMULATION ENGINE. The issue asks for the ssm-simulators `ornstein` simulator. In this environment
+(ssms 0.8.3) that simulator corrupts the heap (`double free or corruption (out)`, core dumped) when it is
+called many times with VARYING parameters inside one process: job 6614551 died after ~4 s, and the replay
+in track_a/diag_ssms.py died at call 38 of 2200 (draw 3, coherence 0). Single-parameter repetition is
+fine -- 30 repeats each of six (n, max_t) configurations, including ones with 4-53 % non-terminating
+trials, all passed (job 6614808) -- so the failure is cumulative across parameter changes, not a property
+of any one theta. This is the same family of bug as the documented max_t ~ 0.75 s crash.
+
+We therefore default to `--engine numpy`: an Euler-Maruyama integrator of the SAME process at the same
+delta_t = 1 ms in the stretched frame, absorbing bounds at +/- a, start at a*(2z - 1), non-decision time t
+added to the first-passage time. `--engine ssms` still runs the ssm-simulators version and is used for the
+cross-check (few draws per process), reported in output/track_a/ppc_rt_engine_check.csv.
+
 Sign convention: dx = (v - g x) dt + dW; g > 0 leaky, g < 0 unstable.
 
-Run on Oscar (needs ssms):
-  /users/igrahek/.conda/envs/pyHSSM_New_Nov24/bin/python track_a/ppc_rt.py --tag g1.0_k10_b1.5_pooled
-  ... --all-pooled --k 10
+Run locally (numpy engine) or on Oscar:
+  /opt/homebrew/anaconda3/bin/python track_a/ppc_rt.py --all-pooled --k 10
 Outputs -> output/track_a/ppc_rt_<tag>.csv, ppc_rt_<tag>.png, ppc_rt_summary.csv
 """
 import argparse
@@ -27,7 +38,6 @@ import warnings
 warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
-from ssms.basic_simulators.simulator import simulator
 import matplotlib
 
 matplotlib.use("Agg")
@@ -41,6 +51,39 @@ HORIZON_NATIVE = 0.75
 Q = [0.1, 0.3, 0.5, 0.7, 0.9]
 
 
+def simulate_ou_numpy(v, a, z, g, t, n_per, horizon, rng, dt=0.001):
+    """Euler-Maruyama first passage for dx = (v - g x) dt + dW, absorbing at +/- a, start a*(2z-1).
+
+    v, a, z, g are 1-D arrays, one entry per CONDITION; n_per trials are drawn for each. Returns
+    (rt, choice) for every trial, ordered condition-major, with rt = t + first-passage time and
+    rt = inf for trials that have not crossed by `horizon` (they are the model's omissions).
+    """
+    v = np.repeat(np.asarray(v, np.float64), n_per)
+    a = np.repeat(np.asarray(a, np.float64), n_per)
+    z = np.repeat(np.asarray(z, np.float64), n_per)
+    g = np.repeat(np.asarray(g, np.float64), n_per)
+    n = len(v)
+    x = a * (2 * z - 1)
+    rt = np.full(n, np.inf)
+    ch = np.zeros(n)
+    live = np.ones(n, bool)
+    sq = np.sqrt(dt)
+    n_steps = int(np.ceil((horizon - t) / dt))
+    for step in range(1, n_steps + 1):
+        idx = np.flatnonzero(live)
+        if not len(idx):
+            break
+        xi = rng.standard_normal(len(idx))
+        x[idx] += (v[idx] - g[idx] * x[idx]) * dt + sq * xi
+        hit = np.abs(x[idx]) >= a[idx]
+        if hit.any():
+            h = idx[hit]
+            rt[h] = t + step * dt
+            ch[h] = np.where(x[h] > 0, 1.0, -1.0)
+            live[h] = False
+    return rt, ch
+
+
 def obs_table(gain, bound, k):
     df = pd.read_csv(DATA / f"hssm_ready_nxx1_fixed_b{bound}_g{gain}.csv")
     df["acoh"] = df.coherence.round(2)
@@ -51,13 +94,26 @@ def obs_table(gain, bound, k):
     return df, n_seeds
 
 
-def sim_one_draw(row, cohs, n_per_coh, horizon, rng_seed):
+def sim_one_draw(row, cohs, n_per_coh, horizon, rng_seed, engine="numpy"):
     """Simulate n_per_coh trials at each signed coherence. Returns dict coh -> (rt, choice, omit)."""
     out = {}
+    vs = np.array([float(row["v_Intercept"]) + float(row["v_coherence_signed"]) * c for c in cohs])
+    if engine == "numpy":
+        rng = np.random.default_rng(rng_seed)
+        rt, ch = simulate_ou_numpy(vs, np.full(len(cohs), float(row["a"])),
+                                   np.full(len(cohs), float(row["z"])),
+                                   np.full(len(cohs), float(row["g"])), float(row["t"]),
+                                   n_per_coh, horizon, rng)
+        for i, c in enumerate(cohs):
+            sl = slice(i * n_per_coh, (i + 1) * n_per_coh)
+            r, q = rt[sl], ch[sl]
+            ok = np.isfinite(r)
+            out[c] = (r[ok], q[ok], float(1 - ok.mean()))
+        return out
+    from ssms.basic_simulators.simulator import simulator   # imported lazily: it can abort the process
     max_t = max(2.0, horizon + 0.01)
     for i, c in enumerate(cohs):
-        v = float(row["v_Intercept"]) + float(row["v_coherence_signed"]) * c
-        s = simulator(theta=dict(v=v, a=float(row["a"]), z=float(row["z"]), g=float(row["g"]),
+        s = simulator(theta=dict(v=vs[i], a=float(row["a"]), z=float(row["z"]), g=float(row["g"]),
                                  t=float(row["t"])),
                       model="ornstein", n_samples=n_per_coh, delta_t=0.001, max_t=max_t,
                       random_state=rng_seed + i)
@@ -77,6 +133,8 @@ def main():
     ap.add_argument("--n-draws", type=int, default=200)
     ap.add_argument("--n-per-coh", type=int, default=100, help="trials per coherence PER DRAW")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--engine", choices=["numpy", "ssms"], default="numpy")
+    ap.add_argument("--out-suffix", type=str, default="")
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
 
@@ -102,7 +160,8 @@ def main():
 
         sim_rt, sim_ch, sim_om = {c: [] for c in cohs}, {c: [] for c in cohs}, {c: [] for c in cohs}
         for j, ii in enumerate(idx):
-            res = sim_one_draw(draws.iloc[ii], cohs, a.n_per_coh, horizon, a.seed + 1000 * j)
+            res = sim_one_draw(draws.iloc[ii], cohs, a.n_per_coh, horizon, a.seed + 1000 * j,
+                               engine=a.engine)
             for c in cohs:
                 rt, ch, om = res[c]
                 sim_rt[c].append(rt); sim_ch[c].append(ch); sim_om[c].append(om)
@@ -146,7 +205,7 @@ def main():
                     r[f"qc{int(q*100)}_err"] = sq - oq
             rows.append(r)
         tab = pd.DataFrame(rows)
-        tab.to_csv(OUT / f"ppc_rt_{tag}.csv", index=False)
+        tab.to_csv(OUT / f"ppc_rt_{tag}{a.out_suffix}.csv", index=False)
         errc = tab[[c for c in tab.columns if c.startswith("qc") and c.endswith("_err")]].values.ravel()
         erre = tab[[c for c in tab.columns if c.startswith("qe") and c.endswith("_err")]].values.ravel()
         print(tab[["abs_coherence", "n_obs", "acc_obs", "acc_sim", "omit_sim",
@@ -154,7 +213,7 @@ def main():
         print(f"  |quantile error| correct: median {np.nanmedian(np.abs(errc)):.1f} ms, "
               f"max {np.nanmax(np.abs(errc)):.1f} ms; error trials: median "
               f"{np.nanmedian(np.abs(erre)):.1f} ms, max {np.nanmax(np.abs(erre)):.1f} ms", flush=True)
-        all_rows.append(dict(tag=tag, gain=gain, k=k,
+        all_rows.append(dict(tag=tag, gain=gain, k=k, engine=a.engine,
                              n_draws=len(idx), n_sim_per_coh=len(sim_rt[cohs[0]]),
                              omit_obs=meta["omission_frac"],
                              omit_sim=float(np.mean([np.mean(sim_om[c]) for c in cohs])),
@@ -196,11 +255,11 @@ def main():
         fig.suptitle(f"{tag}: RT posterior predictive (native ms); g = {draws.g.mean():.3f} "
                      f"(g_native {draws.g.mean()*k:+.2f}/s, >0 = leaky)", fontsize=10)
         plt.tight_layout()
-        fig.savefig(OUT / f"ppc_rt_{tag}.png", dpi=130)
-        print("saved", OUT / f"ppc_rt_{tag}.png", flush=True)
+        fig.savefig(OUT / f"ppc_rt_{tag}{a.out_suffix}.png", dpi=130)
+        print("saved", OUT / f"ppc_rt_{tag}{a.out_suffix}.png", flush=True)
 
     summ = pd.DataFrame(all_rows)
-    out = OUT / "ppc_rt_summary.csv"
+    out = OUT / f"ppc_rt_summary{a.out_suffix}.csv"
     if out.exists():
         old = pd.read_csv(out)
         summ = pd.concat([old[~old.tag.isin(summ.tag)], summ], ignore_index=True)

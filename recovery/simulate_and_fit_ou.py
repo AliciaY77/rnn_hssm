@@ -97,7 +97,9 @@ def main():
 
     draws, tune, chains = (20, 20, 1) if args.smoke else (args.draws, args.tune, 4)
     t0 = time.time()
-    idata = model.sample(sampler="numpyro", chains=chains, cores=chains, draws=draws, tune=tune,
+    # HSSM >= 0.3 calls the numpyro NUTS sampler "numpyro"; 0.2.x calls it "nuts_numpyro"
+    sampler = "numpyro" if hssm.__version__ >= "0.3" else "nuts_numpyro"
+    idata = model.sample(sampler=sampler, chains=chains, cores=chains, draws=draws, tune=tune,
                          target_accept=0.95, random_seed=seed)
     elapsed = time.time() - t0
     print(f"sampling took {elapsed/60:.1f} min", flush=True)

@@ -131,6 +131,75 @@ so the mapping introduces no artefact.
 Variants, both run: **(a) as fitted** — sticky bound at ±a_nat, start x0_nat, choice = sign(x_T);
 **(b) leak only** — same g_nat and v_nat, no bound (B = ∞), choice = sign(x_T).
 
+## 4. Posterior predictive on RT and choice: the fits describe the marginals well
+
+`track_a/ppc_rt.py`, 200 posterior draws × 100 trials per signed coherence = **20 000 simulated trials per
+coherence** per gain, horizon 7.80 s stretched (= 0.3 + k·0.75) applied afterwards, non-crossers counted
+as omissions. Tables `output/track_a/ppc_rt_g*_k10_b1.5_pooled.csv` and `ppc_rt_summary.csv`; one figure
+per gain, `ppc_rt_g*_k10_b1.5_pooled.png`.
+
+| gain | median abs. quantile error, correct | max | median, error trials | max | omissions obs / sim | max abs. accuracy error |
+|---|---|---|---|---|---|---|
+| 0.8 | **6.5 ms** | 36.8 ms | 12.3 ms | 48.4 ms | 3.4 % / 1.8 % | 0.021 |
+| 1.0 | **1.6 ms** | 14.8 ms | 2.2 ms | 24.7 ms | 0.30 % / 0.20 % | 0.009 |
+| 1.2 | **0.8 ms** | 12.4 ms | 1.6 ms | 11.1 ms | 0.03 % / 0.02 % | 0.014 |
+
+Quantiles are 10/30/50/70/90 for correct and error trials at each |coherence|, in native ms. This matches
+the plan's expectation: errors ≲ 10 ms at gains 1.0 and 1.2, worse at 0.8 (whose errors are as fast as its
+corrects, which a leaky OU cannot reproduce), omissions within 2 points everywhere.
+**The model reproduces what it was fitted to.**
+
+**Simulation engine — deviation from the issue, and why.** The issue asks for the ssm-simulators
+`ornstein` simulator. With ssms 0.8.3 that simulator aborts the process
+(`double free or corruption (out)`, core dumped) when called repeatedly with *varying* parameters: job
+6614551 died after 4 s, and a replay that prints every theta (`track_a/diag_ssms.py`) died at call 38 of
+2200. Repeating a single theta is fine — 30 repeats each of six (n, max_t) configurations, including ones
+where 4–53 % of trials do not terminate, all passed (job 6614808) — so it is cumulative across parameter
+changes, the same family of bug as the documented max_t ≈ 0.75 s crash. The PPC therefore uses an
+Euler–Maruyama integrator of the same process at the same delta_t = 1 ms (`--engine numpy`).
+**Cross-check (job 6614865, 2 draws × 500 trials per coherence, one process per fit so ssms survives):**
+
+| gain | median abs. quantile error, numpy | ssms | error trials, numpy | ssms |
+|---|---|---|---|---|
+| 0.8 | 7.6 ms | 7.8 ms | 13.5 ms | 18.5 ms |
+| 1.0 | 3.9 ms | 2.9 ms | 6.8 ms | 3.8 ms |
+| 1.2 | 1.8 ms | 1.6 ms | 3.0 ms | 5.4 ms |
+
+The two engines agree within the Monte-Carlo noise of a 2-draw run.
+
+## 5. The kernel PPC result: the transition is absent in both variants
+
+`output/track_a/kernel_ppc.csv`, `kernel_ppc_draws.csv`, figure `kernel_ppc.png` (four panels, one per
+variant, plus slope-vs-gain). Posterior mean and 20 thinned draws per gain; 40 000 real evidence streams
+per gain. Network slopes from `output/kernel_fit/ou_kernel_fits.csv` (all 40 000 trials).
+
+| gain | network slope | (a) as fitted, σ = 1 | (a) matched | (b) leak only, σ = 1 | (b) matched | g_native used | a_native used | frac. bounded, (a) |
+|---|---|---|---|---|---|---|---|---|
+| 0.8 | **+0.0392** | −0.0619 | −0.0408 | +0.0684 | +0.0675 | +9.98 | 0.380 | 0.999 |
+| 1.0 | **+0.0021** | −0.0721 | −0.0566 | +0.0678 | +0.0671 | +9.96 | 0.323 | 1.000 |
+| 1.2 | **−0.0261** | −0.0756 | −0.0643 | +0.0660 | +0.0655 | +9.20 | 0.291 | 1.000 |
+
+(Draw-to-draw sd of the simulated slope is ≤ 0.002 in every cell, so these differences are not noise.)
+
+**Verdict: neither variant reproduces the network's ordering, and neither reproduces any single gain.**
+
+* **(b) leak only** gives *recency at all three gains* (+0.066 to +0.068) with essentially **no gain
+  dependence**: the span across gain is 0.002, against the network's 0.065. That is the direct consequence
+  of §1 — the fitted g_native is the same large positive number at every gain, so the leak-only model has
+  nothing to vary.
+* **(a) as fitted** gives *primacy at all three gains* (−0.041 to −0.064). The fitted bound is
+  a_native ≈ 0.29–0.38, which the accumulator reaches within ~100 ms on 99.9–100 % of trials, so the
+  model commits before most of the evidence arrives. Its weak ordering (−0.041 → −0.064) tracks
+  **a_native (0.380 → 0.291), not g_native (+9.98 → +9.20)**: it is the bound falling with gain, not the
+  leak changing sign.
+* Accuracy under the evidence-driven simulation is 0.83 / 0.82 / 0.79 (variant a, matched) and
+  0.80 / 0.82 / 0.82 (variant b) against the networks' 0.87 / 0.89 / 0.87, i.e. the fitted OU also loses
+  4–8 points of accuracy once it has to integrate the real evidence stream rather than a constant drift.
+
+For comparison, the evidence-conditioned fit of `kernel_fit/RESULTS.md`, which is *fitted to* the kernel,
+reproduces it bin by bin with g = +3.98 / +0.24 / −2.50 per s and B = 2.6 / 2.1 / 4.9. The HSSM fit's
+bound is 7–17× smaller and its leak 2.5–40× larger.
+
 ## 6. Truncation caveat (required by the issue)
 
 The data are horizon-truncated at 750 ms native (7.8 s stretched, = 0.3 + k·0.75 — the issue says 7.5 s,

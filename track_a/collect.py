@@ -121,6 +121,29 @@ def main():
         print("\n=== appendix / hierarchical / timing fits ===")
         print(extra[["tag", "kind"] + cols].round(4).to_string(index=False))
 
+    # recovery table (step 7 deliverable), built from the recover_*_meta.json files
+    rec = []
+    for mp in sorted(OUT.glob("recover_*_meta.json")):
+        m = json.loads(mp.read_text())
+        rec.append(dict(gain=m["gain"], k=m["k"], g_source=m["g_source"],
+                        g_true=m["g_true"], g_true_native=m["g_true_native"],
+                        g_mean=m["g_mean"], g_hdi3=m["g_hdi3"], g_hdi97=m["g_hdi97"],
+                        g_native_mean=m["g_native_mean"], g_native_hdi3=m["g_native_hdi3"],
+                        g_native_hdi97=m["g_native_hdi97"],
+                        sign_recovered=m["sign_recovered"], hdi_covers_truth=m["hdi_covers_truth"],
+                        n_requested=m["n_requested"], n_fitted=m["n_fitted"],
+                        omission_frac=m["omission_frac"], t_fixed=m["t_fixed"],
+                        r_hat_max=m["r_hat_max"], ess_bulk_min=m["ess_bulk_min"],
+                        divergences=m["n_divergences"], total_draws=m["total_draws"],
+                        edge_g=m["edge_mass"]["g"], minutes=m["sampling_minutes"]))
+    if rec:
+        rt = pd.DataFrame(rec).sort_values(["g_source", "gain"])
+        rt.to_csv(OUT / "recovery_table.csv", index=False)
+        print("\n=== recovery at k = 10 (g > 0 = leaky) ===")
+        print(rt.round(4).to_string(index=False))
+        print(f"sign recovered {int(rt.sign_recovered.sum())}/{len(rt)}; "
+              f"94 % HDI covers the truth {int(rt.hdi_covers_truth.sum())}/{len(rt)}")
+
     per = tab[tab.kind == "per_network"]
     if len(per):
         agg = per.groupby(["gain", "k"]).apply(lambda d: pd.Series(dict(

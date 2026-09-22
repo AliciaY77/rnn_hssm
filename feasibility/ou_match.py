@@ -85,8 +85,14 @@ def main():
     ap.add_argument("--gain", type=float, required=True); ap.add_argument("--bound", type=float, default=1.5)
     ap.add_argument("--stretch", type=float, default=6.0); ap.add_argument("--n-random", type=int, default=300)
     ap.add_argument("--n-sim", type=int, default=2000); ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--v-max", type=float, default=2.0, help="relax the LAN drift box (default 2 = LAN)")
+    ap.add_argument("--g-max", type=float, default=1.0, help="relax the LAN leak box (default 1 = LAN)")
+    ap.add_argument("--a-min", type=float, default=0.3, help="relax the LAN boundary floor (default 0.3 = LAN)")
+    ap.add_argument("--t-min", type=float, default=1e-3)
     a = ap.parse_args(); k = a.stretch; OUT.mkdir(parents=True, exist_ok=True)
-    tag = f"match_b{a.bound}_g{a.gain}_k{k:g}"; t0 = time.time()
+    BOX.update(v=(-a.v_max, a.v_max), g=(-a.g_max, a.g_max), a=(a.a_min, BOX["a"][1]), t=(a.t_min, BOX["t"][1]))
+    box_tag = "" if (a.v_max, a.g_max, a.a_min) == (2.0, 1.0, 0.3) else f"_box_v{a.v_max:g}_g{a.g_max:g}_a{a.a_min:g}"
+    tag = f"match_b{a.bound}_g{a.gain}_k{k:g}{box_tag}"; t0 = time.time()
     stem = DATA / f"hssm_ready_nxx1_fixed_b{a.bound}_g{a.gain}"
     df = pd.read_csv(f"{stem}.csv") if not stem.with_suffix(".parquet").exists() or _no_parquet() else pd.read_parquet(f"{stem}.parquet")
     omissions = pd.read_csv(OMIT); cohs = sorted(df.coherence.round(2).unique())
@@ -95,8 +101,9 @@ def main():
 
     rng = np.random.default_rng(a.seed); best = []
     for i in range(a.n_random):                       # random search inside the box
-        v1 = rng.uniform(0, 2 / max(cohs)); v0 = rng.uniform(-0.5, min(1.0, 2 - v1 * max(cohs)))
-        th = [v0, v1, rng.uniform(0.3, 3.0), rng.uniform(0.35, 0.65), rng.uniform(-1, 1), rng.uniform(0.001, min(0.5 * k, 2.0))]
+        vmax, gmax, amin = BOX["v"][1], BOX["g"][1], BOX["a"][0]
+        v1 = rng.uniform(0, vmax / max(cohs)); v0 = rng.uniform(-0.5, min(1.0, vmax - v1 * max(cohs)))
+        th = [v0, v1, rng.uniform(amin, 3.0), rng.uniform(0.35, 0.65), rng.uniform(-gmax, gmax), rng.uniform(BOX["t"][0], min(0.5 * k, 2.0))]
         best.append((objective(th, tgt, scale, cohs, 400, max_t, a.seed), th))
         if (i + 1) % 50 == 0: print(f"  random {i+1}/{a.n_random}: best {min(b[0] for b in best):.3f}", flush=True)
     best.sort(key=lambda x: x[0]); refined = []
@@ -120,14 +127,14 @@ def main():
 
     # g-sensitivity at the best fit: how much do the distributions move if g is forced elsewhere?
     sens = {}
-    for gg in [-1.0, -0.5, 0.0, 0.5, 1.0]:
+    for gg in [-BOX["g"][1], -BOX["g"][1] / 2, 0.0, BOX["g"][1] / 2, BOX["g"][1]]:
         th2 = list(th); th2[4] = gg
         sens[gg] = dict(loss=objective(th2, tgt, scale, cohs, a.n_sim, max_t, a.seed),
                         q50_coh0_ms=float(np.median(simulate(th2, [0.0], 5000, max_t, 7)[0.0]["rt"]) / k * 1000))
     print("\n=== g sensitivity (others fixed at best): loss and median RT at coh 0 (native ms)")
     for gg, s in sens.items(): print(f"  g={gg:+.1f}: loss {s['loss']:.3f}  median RT coh0 {s['q50_coh0_ms']:.0f} ms")
 
-    res = dict(tag=tag, gain=a.gain, bound=a.bound, stretch=k, loss=loss, params=dict(zip(NAMES, map(float, th))),
+    res = dict(tag=tag, gain=a.gain, bound=a.bound, stretch=k, loss=loss, box=dict(v_max=a.v_max, g_max=a.g_max, a_min=a.a_min), params=dict(zip(NAMES, map(float, th))),
                g_native_per_s=float(th[4] * k), v_at_max_coh=float(th[0] + th[1] * max(cohs)),
                on_box_edge={p: bool(abs(val - lo) < 0.02 or abs(val - hi) < 0.02) for p, val, (lo, hi) in
                             [("a", th[2], BOX["a"]), ("g", th[4], BOX["g"]), ("t", th[5], BOX["t"]), ("v_max", th[0] + th[1] * max(cohs), BOX["v"])]},

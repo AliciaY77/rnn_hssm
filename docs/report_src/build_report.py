@@ -13,7 +13,7 @@ for n, f in [("DV", "DejaVuSans"), ("DV-B", "DejaVuSans-Bold"), ("DV-I", "DejaVu
     pdfmetrics.registerFont(TTFont(n, f"{FD}/{f}.ttf"))
 addMapping("DV", 0, 0, "DV"); addMapping("DV", 1, 0, "DV-B"); addMapping("DV", 0, 1, "DV-I"); addMapping("DV", 1, 1, "DV-BI")
 ROOT = pathlib.Path("/Users/igrahek/Library/CloudStorage/Dropbox-Brown/Ivan Grahek/Ivan/Studies/rnn_hssm"); OUTPDF = ROOT / "docs" / "OU_fits_to_gain_RNNs_2026-09-22.pdf"
-B = ParagraphStyle("B", fontName="DV", fontSize=10, leading=13.5, spaceAfter=7)
+B = ParagraphStyle("B", fontName="DV", fontSize=9.8, leading=12.8, spaceAfter=6)
 T = ParagraphStyle("T", parent=B, fontName="DV-B", fontSize=14, leading=18, spaceAfter=2)
 H = ParagraphStyle("H", parent=B, fontName="DV-B", fontSize=11, spaceBefore=10, spaceAfter=4)
 CAP = ParagraphStyle("CAP", parent=B, fontSize=8.5, leading=11, textColor=colors.HexColor("#444444"), spaceAfter=10)
@@ -60,8 +60,8 @@ s.append(tab([["gain", "g (1/s)", "v", "B", "kernel slope: network, OU", "accura
               ["0.8", "+3.98", "46.5", "2.6", "+0.039, +0.041", "0.866, 0.865", "about +4.3"], ["1.0", "+0.24", "40.6", "2.1", "+0.002, +0.002", "0.887, 0.885", "about -1.6"], ["1.2", "-2.50", "40.5", "4.9", "-0.026, -0.028", "0.869, 0.871", "about -6.2"]],
              [0.55*inch, 0.7*inch, 0.5*inch, 0.45*inch, 1.55*inch, 1.4*inch, 1.2*inch],
              "Table 3. Pooled evidence-conditioned OU fits, 40,000 trials per gain. Last column: the landscape analysis's drift coefficient at the undecided state in the same sign convention. The OU is linear and the network saturates into wells at |dv| of about 3, so the fitted magnitude at gain 1.2 is smaller. v does not change with gain, consistent with the landscape finding that gain does not change the evidence tilt."))
-s.append(fig(ROOT / "output/kernel_fit/ou_kernel_fits.png", 6.5, "Figure 1. Left: kernels of the networks (solid) and of the fitted OU driven by the same evidence (dashed). Middle: psychometric curves. Right: kernel slope as a function of g with v and B at their fitted values; the mapping is monotonic and the same at all gains, so the kernel is a direct readout of g."))
-s.append(fig(ROOT / "output/kernel_fit/ou_kernel_fits_per_network.png", 5.0, "Figure 2. One fit per network. Left: g by gain, bars are mean and s.e.m. Right: g against each network's own kernel slope. All 20 networks are leaky at gain 0.8; 15 of 20 are unstable at gain 1.2, median g = -1.8."))
+s.append(fig(ROOT / "output/kernel_fit/ou_kernel_fits.png", 6.3, "Figure 1. Left: kernels of the networks (solid) and of the fitted OU driven by the same evidence (dashed). Middle: psychometric curves. Right: kernel slope as a function of g with v and B at their fitted values; the mapping is monotonic and the same at all gains, so the kernel is a direct readout of g."))
+s.append(fig(ROOT / "output/kernel_fit/ou_kernel_fits_per_network.png", 4.6, "Figure 2. One fit per network. Left: g by gain, bars are mean and s.e.m. Right: g against each network's own kernel slope. All 20 networks are leaky at gain 0.8; 15 of 20 are unstable at gain 1.2, median g = -1.8."))
 s.append(P("One caveat. Three of the 60 single-network fits landed on g of about +12 with a low sticky bound. Strong leak with very early commitment also gives a primacy kernel; this is the bound-versus-leak trade-off known from the Brunton model. It does not occur in the pooled fits, and it can be broken with the fraction of trials whose dv reaches the bound before the deadline, or with the RTs."))
 
 s.append(P("4. Next steps", H))

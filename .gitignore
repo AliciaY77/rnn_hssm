@@ -23,3 +23,5 @@ output/recovery/*.nc
 output/kernel_fit/export.log
 
 !output/track_b/
+output/track_b/recovery/*.npz
+output/track_b/bounded*/*.json

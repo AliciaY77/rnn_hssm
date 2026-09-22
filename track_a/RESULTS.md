@@ -39,11 +39,51 @@ fit on that guard. An RT recorded as 6 ms means the crossing fell in (5, 6] ms, 
 millisecond (the data's own time step) lower: `t = 0.3 + k · (min(rt_native) − 0.001)`, i.e.
 **t = 0.35 / 0.35 / 0.34 s at k = 10** (t_native = 5 / 5 / 4 ms). No RT is at or below t in any fit.
 
-## 1. Headline: every fit converges, and every fit puts g on the LAN's leaky ceiling
+## 1. Headline: every fit converges, every fit says LEAKY, and g is not identified
 
-`output/track_a/headline_pooled.csv`, `native_units.csv`, `all_fits.csv`.
+`output/track_a/headline_pooled.csv`, `native_units.csv`, `all_fits.csv`. **All 12 pooled fits at
+k = 8/10/12/16 converged: R-hat max 1.00, ESS_bulk min 1705, 0 divergences out of 4000 draws, 23–34 min
+each on 4 cores.** Headline at the plan's k = 10 (g > 0 = leaky):
 
-*(filled in below)*
+| gain | n | t fixed | omissions | g [94 % HDI] (stretched) | g_native per s [94 % HDI] | a | a_native | v(0.15) | v_native(0.15) | z | R-hat | ESS_bulk | div | edge mass g | kernel verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.8 | 38 640 | 0.35 | 3.40 % | **0.998** [0.994, 1.000] | **+9.98** [+9.94, +10.00] | 1.201 | 0.380 | 1.209 | 3.82 | 0.495 | 1.00 | 2497 | 0/4000 | **1.00** | fails |
+| 1.0 | 39 881 | 0.35 | 0.30 % | **0.996** [0.988, 1.000] | **+9.96** [+9.88, +10.00] | 1.023 | 0.324 | 1.292 | 4.09 | 0.495 | 1.00 | 2474 | 0/4000 | **0.99** | fails |
+| 1.2 | 39 988 | 0.34 | 0.03 % | **0.921** [0.872, 0.968] | **+9.21** [+8.72, +9.68] | 0.920 | 0.291 | 1.298 | 4.10 | 0.496 | 1.00 | 1815 | 0/4000 | 0.01 | fails |
+
+Theory, same sign convention, predicts g_native = **+4.3 / −1.6 / −6.2**. The fits give **+10.0 / +10.0 /
++9.2**: leaky at every gain, no zero crossing, and the 94 % HDIs exclude the predicted values by 6–16 per s.
+
+**But g is on the box edge, so those magnitudes are not estimates.** The `g` posterior is pressed against
+the LAN's +1 ceiling: 100 % / 99 % of the draws lie within 0.02 of it at gains 0.8 and 1.0. The plan's
+remedy was to raise k, which lowers g by a factor k. It does not work: the posterior re-pins at every
+stretch tested, so g_native simply tracks the ceiling k · 1.
+
+| k | t fixed (0.8/1.0/1.2) | g_native at gain 0.8 (edge mass) | gain 1.0 | gain 1.2 | a_native (0.8/1.0/1.2) | v_native(0.15) |
+|---|---|---|---|---|---|---|
+| 8 | 0.34/0.34/0.33 | +7.98 (**1.00**) | +7.97 (**1.00**) | +7.58 (0.11) | 0.392/0.332/0.296 | 3.74/4.03/4.07 |
+| 10 | 0.35/0.35/0.34 | +9.98 (**1.00**) | +9.96 (**0.99**) | +9.21 (0.01) | 0.380/0.324/0.291 | 3.82/4.09/4.10 |
+| 12 | 0.36/0.36/0.35 | +11.98 (**1.00**) | +11.94 (**0.98**) | +10.68 (0.00) | 0.370/0.316/0.286 | 3.91/4.14/4.13 |
+| 16 | 0.38/0.38/0.36 | +15.98 (**1.00**) | +15.87 (**0.94**) | +12.93 (0.00) | 0.353/0.303/0.280 | 4.07/4.24/4.17 |
+| 20 | 0.40/0.40/0.38 | +19.98 (**1.00**) | *see note* | *see note* | 0.340/–/– | 0.94 (stretched) |
+| 24 | 0.42/0.42/0.40 | +24.00 (**1.00**) | +23.95 (**1.00**) | *see note* | 0.330/0.283/– | 0.88/0.91/– |
+
+Read that column by column: **a_native is stable to 6–13 % and v_native(0.15) to 3–9 % across a 3-fold
+range of k, but g_native grows in proportion to k.** The time rescaling is exact for the process
+(RT × k ⇔ g → g/k, a → a√k, v → v/√k), so a well-identified fit must return the same native values at
+every k. a and v do; g does not. The likelihood is monotone in g up to the box edge at gains 0.8 and 1.0:
+however much leak the box allows, the fit takes all of it. Gain 1.2 leaves the edge from k = 10 on
+(edge mass 0.01 → 0.00) but its g_native still climbs with k (+7.6 → +12.9), so it is not identified
+either, only less badly.
+
+This is not an artefact of the LAN alone: the exact-simulator random search in `feasibility/RESULTS.md`
+§1 reports the same thing — "every good boxed fit has g at or near +1 (leaky) at all gains".
+
+Why the likelihood wants unbounded leak: the constant-bound RT distributions have a 6 ms minimum and a
+750 ms maximum with q90/q50 ≈ 2.8 (table above). With t fixed at the minimum, the only way a one-boundary
+OU produces both the very fast leading edge and the long flat tail is strong mean reversion, which creates
+a quasi-stationary population that leaks across the bound slowly. More leak always helps, so g runs to
+whatever bound it is given.
 
 ## 2. Per-network fits (120 fits, job 6613594): 20/20 networks leaky at every gain
 

@@ -25,3 +25,7 @@ output/kernel_fit/export.log
 # issue #3 Track A: track tables/figures/summaries, not netcdfs
 !output/track_a/
 output/track_a/*.nc
+# Track A: keep summaries, metas, PPC tables/figures; not the netcdfs, the per-network posterior
+# draws (an intermediate for the PPC scripts) or the pooled-over-networks draws files
+output/track_a/*_b1.5_s[0-9][0-9]_draws.csv
+output/track_a/pernetpool_*

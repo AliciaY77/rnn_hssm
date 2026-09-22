@@ -38,8 +38,22 @@ def main():
             continue
         m = json.loads(meta_path.read_text())
         s = pd.read_csv(summ_path).set_index("param")
+        if tag.startswith("recover_"):
+            kind = "recovery"
+        elif tag.startswith("appendix_"):
+            kind = "appendix_weibull"
+        elif tag.startswith("timing_"):
+            kind = "timing"
+        elif m.get("hierarchical"):
+            kind = "hierarchical"
+        elif m.get("smoke"):
+            kind = "smoke"
+        elif m.get("seed_filter"):
+            kind = "per_network"
+        else:
+            kind = "pooled"
         r = dict(
-            tag=tag, kind=("pooled" if not m.get("seed_filter") else "per_network"),
+            tag=tag, kind=kind,
             gain=m["gain"], k=m["k"], bound=m.get("bound"), seed=m.get("seed_filter") or np.nan,
             n=m["n_fitted"], n_seeds=m.get("n_seeds"), subsample=m.get("subsample"),
             t_fixed=m["t_fixed"], t_native_ms=1000 * m["t_native"],
@@ -69,6 +83,7 @@ def main():
     print(f"{len(tab)} fits -> {OUT/'all_fits.csv'}")
 
     pooled = tab[tab.kind == "pooled"].sort_values(["k", "gain"])
+    extra = tab[tab.kind.isin(["appendix_weibull", "hierarchical", "timing"])].sort_values(["kind", "k", "gain"])
     show = ["gain", "k", "n", "t_fixed", "omission_frac", "g_mean", "g_hdi3", "g_hdi97",
             "g_nat_mean", "g_nat_hdi3", "g_nat_hdi97", "a_mean", "a_nat_mean",
             "v_Intercept_mean", "v_coherence_signed_mean", "v0p15_mean", "z_mean",
@@ -77,6 +92,12 @@ def main():
     pooled[show].to_csv(OUT / "headline_pooled.csv", index=False)
     print("\n=== pooled fits (g > 0 = leaky) ===")
     print(pooled[show].round(4).to_string(index=False))
+
+    if len(extra):
+        cols = [c for c in show if c in extra.columns]
+        extra[["tag", "kind"] + cols].to_csv(OUT / "other_fits.csv", index=False)
+        print("\n=== appendix / hierarchical / timing fits ===")
+        print(extra[["tag", "kind"] + cols].round(4).to_string(index=False))
 
     per = tab[tab.kind == "per_network"]
     if len(per):

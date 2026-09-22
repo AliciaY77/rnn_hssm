@@ -16,6 +16,11 @@ the network's |dv| = 2.0 level -- that is the judgment call, recorded in track_b
     --hit-mode bern   : the Bernoulli log-likelihood of 1[the trial ever crossed]
     --hit-mode cross  : the categorical log-likelihood of the first-crossing-time bin
                         (0-50, 50-100, 100-150, 150-250, 250-400, 400-750 ms, never); subsumes 'bern'
+    --hit-mode term   : the Bernoulli log-likelihood of 1[|dv_T| >= 2.0 AT THE DEADLINE].  In a sticky-bound
+                        model "ever hit" and "|a_T| >= B" are the same event, so the data-side indicator has
+                        to be measured at the deadline too; the network's |dv| = 2.0 crossing is NOT
+                        absorbing (46 / 21 / 10 % of the trials that cross are back below 2.0 by T at gains
+                        0.8 / 1.0 / 1.2), which is what makes 'bern' and 'cross' inconsistent with the model.
     --hit-mode none   : choices only
 to the choice log-likelihood.  Fits are run with and without it.
 
@@ -133,7 +138,7 @@ def make_objective(sim, y, hit=None, cross_cat=None, hit_mode="none", eps=1e-4, 
         out = -float(np.sum(np.where(y == 1, np.log(p), np.log1p(-p))))
         if hit_mode != "none":
             pk = (counts + 0.5) / (counts.sum(0, keepdims=True) + 0.5 * N_CAT)
-            if hit_mode == "bern":
+            if hit_mode in ("bern", "term"):
                 ph = np.clip(1.0 - pk[N_CAT - 1], eps, 1 - eps)
                 out -= float(np.sum(np.where(hit == 1, np.log(ph), np.log1p(-ph))))
             elif hit_mode == "cross":
@@ -162,7 +167,7 @@ def main():
                     help="fit all 20 networks jointly (one parameter set per gain), --sub-trials per network")
     ap.add_argument("--sub-trials", type=int, default=500,
                     help="trials per network in a pooled fit (memory: the MC noise block is M x N x T)")
-    ap.add_argument("--hit-mode", choices=["none", "bern", "cross"], default="none")
+    ap.add_argument("--hit-mode", choices=["none", "bern", "cross", "term"], default="none")
     ap.add_argument("--M", type=int, default=300)
     ap.add_argument("--n-trials", type=int, default=None)
     ap.add_argument("--data-dir", type=pathlib.Path, default=None)
@@ -206,6 +211,10 @@ def main():
         raise SystemExit("tcross2 not in the npz -- re-run kernel_fit/export_evidence.py")
     hit = (~np.isnan(tc)).astype(int) if tc is not None else None
     cross_cat = categorise_cross(tc, T=T, edges=CROSS_EDGES) if tc is not None else None
+    if a.hit_mode == "term":                     # commitment measured at the deadline, as the model does
+        if a.synthetic is not None:
+            raise SystemExit("--hit-mode term needs the network's dv_T; not defined for synthetic data")
+        hit = (np.abs(d[f"dvT_g{a.gain}"]) >= 2.0).astype(int)
 
     noise_seed = 10_000 + a.seed * 10 + int(round(a.gain * 10))
     sim, backend = make_simulator(rel, a.M, noise_seed, a.backend)

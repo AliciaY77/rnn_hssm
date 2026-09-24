@@ -1,0 +1,9 @@
+--gain 0.8 --k 10 --bound 2.0
+--gain 1.0 --k 10 --bound 2.0
+--gain 1.2 --k 10 --bound 2.0
+--gain 0.8 --k 10 --bound 2.5
+--gain 1.0 --k 10 --bound 2.5
+--gain 1.2 --k 10 --bound 2.5
+--gain 0.8 --k 10 --bound 2.94
+--gain 1.0 --k 10 --bound 2.94
+--gain 1.2 --k 10 --bound 2.94

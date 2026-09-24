@@ -395,3 +395,8 @@ network lies outside them for some statistics even at 1.5 (gain 0.8 omissions 3.
 Kernel PPC with 40 draws (`kernel_ppc*_b{1.5,2.5,2.94}_d40.csv`): 95 % posterior interval of the model's kernel slope is
 ±0.001 or less; the network's own slope has a 95 % bootstrap interval of about ±0.0013 (round2-report
 `output/report/network_kernel_boot.csv`), both far smaller than the model–network gaps of 0.02–0.08.
+Quantile-probability PPC (`track_a/ppc_qpp.py`, job 6670495): HSSM `plot_quantile_probability` defaults (80 predictive datasets =
+20 draws × 4 chains, one simulated trial per data trial, q = 0.25 / 0.5 / 0.75, accuracy coding, 95 % chi-square ellipses over
+datasets); the one departure is that simulated non-crossers are dropped at the 750 ms horizon, as in the data. Correct-trial
+quantile gaps (network − model): threshold 1.5 within 1–32 ms (gain 0.8) and ≤ 10 ms (gains 1.0, 1.2); threshold 2.94 gain 0.8
+11–85 ms, gain 1.0 3–42 ms, gain 1.2 within 8 ms. Output `output/track_a/ppc_qpp_g*_k10_b*.csv`.

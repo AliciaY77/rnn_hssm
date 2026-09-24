@@ -111,7 +111,10 @@ def main():
     ap.add_argument("--draws-glob", type=str, default="g{gain}_k{k:g}_b1.5_pooled_draws.csv")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out-tag", type=str, default="")
+    ap.add_argument("--variants", type=str, nargs="+", default=[v[0] for v in VARIANTS],
+                    help="subset of variants to run (default: all four)")
     a = ap.parse_args()
+    run_variants = [v for v in VARIANTS if v[0] in a.variants]
     OUT.mkdir(parents=True, exist_ok=True)
     suffix = f"_{a.out_tag}" if a.out_tag else ""
     netk = pd.read_csv(NETK)
@@ -143,7 +146,7 @@ def main():
         idx = np.linspace(0, len(draws) - 1, min(a.n_draws, len(draws))).astype(int)
         jobs = [("mean", mean_row)] + [(f"draw{i}", draws.iloc[j]) for i, j in enumerate(idx)]
 
-        for vname, use_bound, matched in VARIANTS:
+        for vname, use_bound, matched in run_variants:
             per_draw_w, per_draw_s, per_draw_acc, per_draw_fb = [], [], [], []
             for jname, row in jobs:
                 v0, v1, g, a_nat, x0, t_nat = native(row, a.k)
@@ -195,7 +198,7 @@ def main():
                       "acc_net", "acc_sim", "frac_bounded"]].round(4).to_string(index=False))
 
     # figure: one panel per variant, network (solid) vs model (dashed), three gains
-    vlist = [v[0] for v in VARIANTS]
+    vlist = [v[0] for v in run_variants]
     fig, axes = plt.subplots(1, len(vlist) + 1, figsize=(4.2 * (len(vlist) + 1), 3.8))
     cols = {0.8: "C0", 1.0: "k", 1.2: "C3"}
     xb = (np.arange(N_BINS) + 0.5) * 750 / N_BINS

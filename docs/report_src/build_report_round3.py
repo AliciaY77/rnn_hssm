@@ -33,43 +33,36 @@ def fig(path, width_in, caption):
     return KeepTogether([Image(str(path), width=wi, height=wi * h / w), Paragraph(caption, CAP)])
 
 s = []
-s.append(P("OU fits to the gain-modulated RNNs: RT-and-choice fits are leaky at every gain; the same accumulator fitted to choice given the evidence recovers the transition", T))
-s.append(P(f"Ivan Grahek, {datetime.date.today():%d %B %Y}. Summary of round 2 plus the threshold sweep; full write-up docs/OU_fits_to_gain_RNNs_round2.pdf, code and RESULTS.md on branch round2-report of rnn_hssm. Prediction: gain 0.8 / 1.0 / 1.2 = leaky / near-perfect / unstable integration, so the OU leak should go positive / zero / negative. Convention throughout: ssm-simulators' update is x += (v − g·x)·dt + noise, so <b>positive g is leaky</b>, g = −λ in Brunton's notation.", SM))
+s.append(P("OU fits to the gain-modulated RNNs: RT-and-choice fits stay leaky at every threshold; the same accumulator fitted to choice given the evidence recovers the transition", T))
+s.append(P(f"Ivan Grahek, {datetime.date.today():%d %B %Y}. Round 3 summary; full write-up docs/OU_fits_to_gain_RNNs_round2.pdf, code and RESULTS.md on branch round2-report of rnn_hssm. Prediction: gain 0.8 / 1.0 / 1.2 = leaky / near-perfect / unstable integration, so the OU leak should go positive / zero / negative. Convention throughout: ssm-simulators' update is x += (v − g·x)·dt + noise, so <b>positive g is leaky</b>, g = −λ in Brunton's notation.", SM))
 s.append(Spacer(1, 4))
 
-s.append(P("1. Control: HSSM OU fitted to RT and choice (20 networks, bound 1.5 on dv)", H))
-s.append(fig(FIG / "fig_track_a_rt_ppc.png", 5.4, "Figure 1. The fit reproduces RT and choice. Network (filled) vs fitted OU (line), by |coherence| and gain, correct up and error down, areas summing to one per panel. Setup: RTs × 10, non-decision time fixed at offset + min RT, no lapse, v ~ 1 + signed coherence (identity link), a, z, g shared across coherences; 4 chains, R-hat ≤ 1.01, one divergence in 600 000 draws. Median RT-quantile error 6.5 / 1.6 / 0.8 ms at gains 0.8 / 1.0 / 1.2."))
-s.append(tab([["gain", "g native (per s) [94 % HDI]", "posterior mass at the +1 ceiling", "networks with g > 0 (n = 20)", "kernel slope: network vs fitted OU with bound / without"],
-              ["0.8", "+10.0 [+9.9, +10.0]", "1.00", "20 of 20", "+0.039 vs −0.041 / +0.068"],
-              ["1.0", "+10.0 [+9.9, +10.0]", "0.99", "20 of 20", "+0.002 vs −0.057 / +0.067"],
-              ["1.2", "+9.2 [+8.7, +9.7]", "0.01", "20 of 20", "−0.026 vs −0.064 / +0.066"]],
-             [0.5*inch, 1.7*inch, 1.5*inch, 1.4*inch, 2.0*inch],
-             "Table 1. Leaky at every gain. g sits on the likelihood's +1 edge at gains 0.8 and 1.0 for every stretch k = 8 … 24 (native value = k), so only the sign is identified. Recovery: with the theoretical g planted in simulated data the same pipeline returns g < 0 at gains 1.0 and 1.2 (sign 6 of 6). Last column: Figure 2."))
-s.append(fig(FIG / "fig_track_a_kernel.png", 5.2, "Figure 2. The same fitted model driven by the networks' own evidence streams gets the psychophysical kernel wrong at every gain. With its fitted bound (0.3, reached within 100 ms on > 99.9 % of trials) it commits early: primacy everywhere. With the bound removed the fitted leak (+10 per s) forgets: recency everywhere. The networks go recency → flat → primacy."))
-s.append(PageBreak())
-s.append(P("2. Raising the threshold: where the slow dynamics govern the crossing", H))
-s.append(P("Every RT here is a threshold we place on dv (the networks read out at 750 ms). At 1.5 the crossing is driven by fast readout fluctuations; near the committed attractors (≈ 3) the slow choice mode governs it, but non-crossers are dropped (HSSM has no censored likelihood). Same pipeline, nine more pooled fits, all converged (R-hat 1.00, one divergence in 36 000 draws)."))
-s.append(fig(FIG / "fig_bound_sweep.png", 4.1, "Figure 3. RT posterior predictive at each threshold (rows) and gain (columns), all coherences, correct up and error down, network (filled) vs fitted OU (line). Panel titles: fitted native g with 94 % HDI; insets: median RT, omission rate and accuracy, network / model."))
-s.append(tab([["bound", "gain", "g native (per s) [94 % HDI]", "omissions network / model (%)", "RT-quantile error (ms)", "kernel slope, fitted OU"],
-              ["1.5", "0.8", "+10.0 [+9.9, +10.0]", "3.4 / 1.8", "6.5", "−0.041"],
-              ["", "1.0", "+10.0 [+9.9, +10.0]", "0.3 / 0.2", "1.6", "−0.057"],
-              ["", "1.2", "+9.2 [+8.7, +9.7]", "0.0 / 0.0", "0.8", "−0.064"],
-              ["2.0", "0.8", "+10.0 [+9.9, +10.0]", "13.4 / 6.1", "20.9", "−0.024"],
-              ["", "1.0", "+9.9 [+9.8, +10.0]", "1.7 / 1.2", "3.7", "−0.045"],
-              ["", "1.2", "+4.9 [+4.3, +5.4]", "0.2 / 0.2", "2.4", "−0.057"],
-              ["2.5", "0.8", "+6.7 [+6.2, +7.2]", "30.7 / 11.3", "33.7", "−0.011"],
-              ["", "1.0", "+5.8 [+5.3, +6.2]", "10.1 / 2.9", "10.1", "−0.035"],
-              ["", "1.2", "+4.7 [+4.2, +5.2]", "5.6 / 0.6", "3.5", "−0.052"],
-              ["2.94", "0.8", "+9.9 [+9.6, +10.0]", "66.9 / 20.7", "37.8", "+0.006"],
-              ["", "1.0", "+2.3 [+1.9, +2.6]", "30.4 / 6.3", "24.1", "−0.025"],
-              ["", "1.2", "+0.8 [+0.5, +1.1]", "14.3 / 1.8", "4.3", "−0.043"],
-              ["network", "0.8 / 1.0 / 1.2", "predicted + / 0 / −", "", "", "+.039 / +.002 / −.026"]],
-             [0.65*inch, 0.95*inch, 1.55*inch, 1.3*inch, 0.95*inch, 1.5*inch],
-             "Table 2. Positive g is leaky; every HDI excludes zero; +10.0 is the likelihood's ceiling. Raising the threshold lowers g and orders it by gain as predicted, and the kernel ordering appears too, shifted toward primacy. g never becomes negative, and the fit fails where the ordering appears: the leaky network's RTs have a long flat tail and many omissions that a one-timescale linear OU cannot produce. Gain 1.2 fits at every threshold and reaches near-perfect integration (+0.8) at 2.94, not instability (landscape −6.2)."))
+s.append(P("1. Control: HSSM OU fitted to RT and choice, at three thresholds on dv", H))
+s.append(P("The networks read out their choice at 750 ms and do not produce RTs. Every RT below is a threshold we place on the decision variable dv; trials that never reach it are dropped (HSSM has no censored likelihood). At a low threshold the crossing is driven by the fast fluctuations of the readout; near the committed attractors (|dv| ≈ 3) the slow choice mode governs it. Fit: pretrained OU likelihood, 20 networks pooled per gain, RTs × 10, non-decision time fixed at offset + minimum RT, no lapse, v ~ 1 + signed coherence, a, z and g shared across coherences, uniform priors over the likelihood's box. All 12 fits converged (R-hat 1.00, one divergence in 48 000 draws)."))
+s.append(fig(FIG / "fig_r3_rt_ppc.png", 6.2, "Figure 1. The fitted model reproduces RT and choice at a low threshold but not at a high one for the leaky network. Rows: threshold 1.5, 2.5, 2.94; columns: gain. RT distributions over all coherences, correct up and error down (areas sum to one), network (filled) vs fitted OU at its posterior mean (line). Titles: fitted native g with 94 % HDI. Per-coherence versions: output/track_a/ppc_rt_*.png."))
+s.append(fig(FIG / "fig_r3_threshold.png", 6.6, "Figure 2. How the fit changes with the threshold (all four fitted thresholds). Left: fitted g with 94 % HDI; it falls and orders by gain as the theory predicts, but never becomes negative, and gain 0.8 returns to the ceiling at 2.94. Middle: median absolute RT-quantile error (10–90 %, correct trials, per coherence). Right: omissions; the model predicts a fraction of the network's."))
+rows = [("1.5", "0.8", "+10.0 [+9.9, +10.0]", "3.4 / 1.8", "6.5", "−0.041"), ("", "1.0", "+10.0 [+9.9, +10.0]", "0.3 / 0.2", "1.6", "−0.057"), ("", "1.2", "+9.2 [+8.7, +9.7]", "0.0 / 0.0", "0.8", "−0.064"),
+        ("2.0", "0.8", "+10.0 [+9.9, +10.0]", "13.4 / 6.1", "20.9", "−0.024"), ("", "1.0", "+9.9 [+9.8, +10.0]", "1.7 / 1.2", "3.7", "−0.045"), ("", "1.2", "+4.9 [+4.3, +5.4]", "0.2 / 0.2", "2.4", "−0.057"),
+        ("2.5", "0.8", "+6.7 [+6.2, +7.2]", "30.7 / 11.3", "33.7", "−0.011"), ("", "1.0", "+5.8 [+5.3, +6.2]", "10.1 / 2.9", "10.1", "−0.035"), ("", "1.2", "+4.7 [+4.2, +5.2]", "5.6 / 0.6", "3.5", "−0.052"),
+        ("2.94", "0.8", "+9.9 [+9.6, +10.0]", "66.9 / 20.7", "37.8", "+0.006"), ("", "1.0", "+2.3 [+1.9, +2.6]", "30.4 / 6.3", "24.1", "−0.025"), ("", "1.2", "+0.8 [+0.5, +1.1]", "14.3 / 1.8", "4.3", "−0.043"),
+        ("network", "all", "predicted + / 0 / −", "", "", "+.039 / +.002 / −.026")]
+s.append(tab([["threshold", "gain", "g native (per s) [94 % HDI]", "omissions network / model (%)", "RT-quantile error (ms)", "kernel slope, fitted OU"]] + [list(r) for r in rows],
+             [0.85*inch, 0.7*inch, 1.5*inch, 1.3*inch, 0.95*inch, 1.6*inch],
+             "Table 1. Positive g is leaky and every HDI excludes zero. +10.0 is the likelihood's ceiling at k = 10: at threshold 1.5 g re-pins there for every stretch k = 8 … 24 (native value = k), so there only the sign is identified; 120 per-network fits at 1.5 give g > 0 in 120 of 120. Recovery with the theoretical g planted in simulated data returns g < 0 at gains 1.0 and 1.2 (sign 6 of 6), so the pipeline can see instability. Kernel slope: Figure 3."))
+s.append(fig(FIG / "fig_r3_kernel.png", 5.5, "Figure 3. Kernel check: the fitted model (with its fitted bound) driven by the networks' own evidence streams. Top: kernels, network (solid) vs model (dashed). Bottom: kernel slope against gain. A higher threshold moves the model toward the network and brings out the ordering across gain, but the model still commits early and stays shifted toward primacy by 0.02–0.03."))
+s.append(tab([["fit", "kernel slope, gain 0.8 / 1.0 / 1.2", "mean |slope error|", "bin-by-bin RMS error", "span 0.8 − 1.2"],
+              ["network", "+0.039 / +0.002 / −0.026", "", "", "0.065"],
+              ["HSSM, threshold 1.5", "−0.041 / −0.057 / −0.064", "0.059", "0.151", "0.023"],
+              ["HSSM, threshold 2.0", "−0.024 / −0.045 / −0.057", "0.047", "0.115", "0.034"],
+              ["HSSM, threshold 2.5", "−0.011 / −0.035 / −0.052", "0.038", "0.091", "0.040"],
+              ["HSSM, threshold 2.94", "+0.006 / −0.025 / −0.043", "0.025", "0.065", "0.049"],
+              ["Track B, choice given evidence (Section 2)", "+0.041 / +0.002 / −0.031", "0.002", "0.011", "0.072"]],
+             [2.4*inch, 1.75*inch, 0.95*inch, 1.0*inch, 0.85*inch],
+             "Table 2. Kernel error against the network. It falls steadily with the threshold, but even at 2.94 it is about ten times the evidence-conditioned fit's by slope and six times by bin, and the sign is still wrong at gain 1.0 — while at that threshold the RT fit has failed for gains 0.8 and 1.0 (Table 1)."))
 
-s.append(P("3. Result: the same OU fitted to each trial's choice given its evidence stream (Brunton-style, no RTs)", H))
+s.append(P("2. Result: the same OU fitted to each trial's choice given its evidence stream (Brunton-style, no RTs)", H))
 s.append(P("a<sub>t+1</sub> = a<sub>t</sub> + (v e<sub>t</sub> − g a<sub>t</sub>) dt + √dt ξ<sub>t</sub>, dt = 1 ms, choice = sign(a<sub>750</sub>); e<sub>t</sub> is the evidence the network received. Without a bound a<sub>T</sub> is Gaussian given the evidence, so each choice has an exact likelihood; fitted by maximum likelihood and NUTS per network and gain (60 fits) and pooled."))
-s.append(fig(FIG / "fig_track_b_g.png", 4.6, "Figure 4. Left: fitted g per network with 94 % intervals (filled), pooled fit (bars), bounded fit with the deadline-commitment term (open squares), landscape drift coefficient (gray), kernel zero crossing of Fig 1F at gain 1.016 (dotted). Right: g against each network's own kernel slope, r = 0.996."))
+s.append(fig(FIG / "fig_track_b_g.png", 4.3, "Figure 4. Left: fitted g per network with 94 % intervals (filled), pooled fit (bars), bounded fit with the deadline-commitment term (open squares), landscape drift coefficient (gray), kernel zero crossing of Fig 1F at gain 1.016 (dotted). Right: g against each network's own kernel slope, r = 0.996."))
 s.append(tab([["gain", "median g across networks (per s) [IQR]", "intervals excluding 0 on the predicted side", "pooled g [94 % HDI]", "landscape coefficient (approx.)"],
               ["0.8", "+4.13 [+3.02, +4.63]", "20 of 20", "+3.95 [+3.83, +4.06]", "+4.3"],
               ["1.0", "+0.32 [−0.34, +0.79]", "10 positive, 5 negative", "+0.23 [+0.15, +0.32]", "−1.6"],
@@ -77,7 +70,10 @@ s.append(tab([["gain", "median g across networks (per s) [IQR]", "intervals excl
              [0.5*inch, 2.0*inch, 1.7*inch, 1.6*inch, 1.2*inch],
              "Table 3. Leaky → near zero → unstable, in every network at the extreme gains. Zero crossing of g against gain: 1.016 (Fig 1F kernel: 1.016). Recovery on real evidence with fitted or theoretical g planted: 60 of 60 signs, 56 of 60 intervals cover the truth."))
 s.append(fig(FIG / "fig_track_b_summary.png", 5.6, "Figure 5. Posterior predictive. Left: the fit reproduces the psychophysical kernel it was not fitted to (slopes +0.041 / +0.002 / −0.031 vs network +0.039 / +0.002 / −0.026). Middle: P(choice) by signed coherence, within 0.015 everywhere. Right: per-trial predicted probability against observed choice fraction."))
-s.append(P("Caveats. The magnitude at gain 0.8 depends on how the sticky bound is constrained (+4.1 free, +2.5 with the deadline commitment fraction); sign and ordering do not. The linear OU under-reports the repulsion at gain 1.2 (−2.6 vs −6.2) because it cannot saturate into wells. A joint RT-and-choice fit would need a second, fast timescale; the Brody lab's Fokker–Planck grid likelihood is the route to both."))
+
+s.append(P("3. What we learned", H))
+s.append(P("The RT here is a readout we impose on dv, not something the network does, and what the RT-and-choice fit measures depends on where we put it. At a low threshold it is crossed by the fast readout fluctuations: the OU fits those RTs almost perfectly by putting its one leak term on their decay, leaky and at the ceiling at every gain, with the wrong kernel. Raising the threshold lets the slow dynamics show through: g falls and orders by gain and the kernel ordering appears. But g never becomes negative, and at the thresholds where the ordering appears the one-timescale linear OU with a constant bound no longer fits the leaky network's RTs or omissions."))
+s.append(P("Conditioning the same accumulator on each trial's evidence, and fitting only the choice the network actually makes, gives the predicted sign pattern per network with intervals and reproduces the kernel an order of magnitude better. A joint RT-and-choice model of these networks would need at least a second, fast timescale and a likelihood that handles non-crossers; the Brody lab's Fokker–Planck grid likelihood is the natural route for both. Caveats for the result: the magnitude at gain 0.8 depends on how a sticky bound is constrained (+4.1 free, +2.5 with the deadline commitment fraction; the sign does not change), and the linear OU under-reports the repulsion at gain 1.2 (−2.6 vs −6.2) because it cannot saturate into wells."))
 
 def footer(c, d):
     c.saveState(); c.setFont("DV", 8); c.setFillColor(colors.grey); c.drawRightString(letter[0] - 0.8 * inch, 0.5 * inch, str(d.page)); c.restoreState()

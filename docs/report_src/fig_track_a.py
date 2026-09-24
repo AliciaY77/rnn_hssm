@@ -63,3 +63,23 @@ for var, lab, mk in [("a_fitted_matched", "fitted OU with bound", "s"), ("b_leak
 ax.plot(GAINS, net, "-o", color="C2", label="network"); ax.axhline(0, color="gray", lw=0.5)
 ax.set_xlabel("gain"); ax.set_ylabel("kernel slope"); ax.set_ylim(-0.08, 0.12); ax.set_title("kernel slope against gain"); ax.legend(frameon=False, loc="upper left", ncol=3, columnspacing=0.8, handlelength=1.4, fontsize=8); ax.set_xticks(GAINS)
 plt.tight_layout(); fig.savefig(OUT / "fig_track_a.png", dpi=160); print("saved", OUT / "fig_track_a.png")
+
+# ---- kernel-only version (1 x 3) for the report: the RT PPC by coherence lives in fig_track_a_rt_ppc.py
+fig2, ax2 = plt.subplots(1, 3, figsize=(11, 3.7))
+for j, (var, title) in enumerate([("a_fitted_matched", "with fitted bound: primacy at every gain"), ("b_leakonly_matched", "leak only, no bound: recency at every gain")]):
+    ax = ax2[j]
+    for gn in GAINS:
+        row = kp[(kp.gain == gn) & (kp.variant == var)].iloc[0]
+        ax.plot(xb, [row[f"wnet{i}"] for i in range(8)], "-o", color=COL[gn], ms=4)
+        ax.plot(xb, [row[f"wsim{i}"] for i in range(8)], "--s", color=COL[gn], ms=4, alpha=0.8)
+    ax.axhline(0, color="gray", lw=0.5); ax.set_xlabel("time within trial (ms)"); ax.set_title(title); ax.set_ylim(-0.05, 0.68)
+    if j == 0:
+        ax.set_ylabel("weight on choice (L1-normalised)")
+        ax.legend([Line2D([], [], color="gray", marker="o", ms=4), Line2D([], [], color="gray", ls="--", marker="s", ms=4)] + [Line2D([], [], color=COL[g], lw=3) for g in GAINS],
+                  ["network", "fitted OU"] + [f"gain {g}" for g in GAINS], frameon=False, loc="upper center", ncol=2, handlelength=1.6, fontsize=8, columnspacing=1.0)
+ax = ax2[2]
+for var, lab, mk in [("a_fitted_matched", "fitted OU with bound", "s"), ("b_leakonly_matched", "leak only", "^")]:
+    ax.plot(GAINS, [kp[(kp.gain == gn) & (kp.variant == var)].slope_sim.iloc[0] for gn in GAINS], "--" + mk, color="k", mfc="w" if mk == "^" else "k", label=lab)
+ax.plot(GAINS, net, "-o", color="C2", label="network"); ax.axhline(0, color="gray", lw=0.5); ax.set_ylim(-0.08, 0.12)
+ax.set_xlabel("gain"); ax.set_ylabel("kernel slope"); ax.set_title("kernel slope against gain"); ax.legend(frameon=False, loc="upper left", ncol=3, columnspacing=0.8, handlelength=1.4, fontsize=8); ax.set_xticks(GAINS)
+plt.tight_layout(); fig2.savefig(OUT / "fig_track_a_kernel.png", dpi=160); print("saved", OUT / "fig_track_a_kernel.png")

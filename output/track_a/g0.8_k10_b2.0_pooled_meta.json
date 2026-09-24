@@ -1,0 +1,117 @@
+{
+  "tag": "g0.8_k10_b2.0_pooled",
+  "gain": 0.8,
+  "k": 10.0,
+  "bound": 2.0,
+  "seed_filter": 0,
+  "offset_s": 0.3,
+  "t_fixed": 0.41,
+  "t_native": 0.011,
+  "t_eps_native": 0.001,
+  "draws": 1000,
+  "tune": 1000,
+  "chains": 4,
+  "total_draws": 4000,
+  "target_accept": 0.95,
+  "n_divergences": 0,
+  "divergence_frac": 0.0,
+  "r_hat_max": 1.0,
+  "ess_bulk_min": 2113.0,
+  "sampling_minutes": 28.346735314528146,
+  "edge_mass": {
+    "a": 0.0,
+    "g": 0.99875,
+    "v_at_0p15": 0.0,
+    "v_at_0": 0.0,
+    "z": 0.0
+  },
+  "edge_tol": 0.02,
+  "box": {
+    "v": [
+      -2.0,
+      2.0
+    ],
+    "a": [
+      0.3,
+      3.0
+    ],
+    "z": [
+      0.1,
+      0.9
+    ],
+    "g": [
+      -1.0,
+      1.0
+    ],
+    "t": [
+      0.001,
+      2.0
+    ]
+  },
+  "priors": "box uniform (explicit)",
+  "hierarchical": false,
+  "link_settings": "identity",
+  "prior_spec": {
+    "v": {
+      "Intercept": {
+        "name": "Uniform",
+        "lower": -2.0,
+        "upper": 2.0
+      },
+      "coherence_signed": {
+        "name": "Uniform",
+        "lower": -13.333333333333334,
+        "upper": 13.333333333333334
+      }
+    },
+    "a": {
+      "name": "Uniform",
+      "lower": 0.3,
+      "upper": 3.0
+    },
+    "z": {
+      "name": "Uniform",
+      "lower": 0.1,
+      "upper": 0.9
+    },
+    "g": {
+      "name": "Uniform",
+      "lower": -1.0,
+      "upper": 1.0
+    }
+  },
+  "smoke": false,
+  "hssm_version": "0.2.4",
+  "sampler": "nuts_numpyro",
+  "posterior_mean": {
+    "v_Intercept": -0.013509305528012095,
+    "v_coherence_signed": 8.134575843811035,
+    "a": 1.3619948625564575,
+    "z": 0.48883867263793945,
+    "g": 0.9970242977142334
+  },
+  "derived_mean": {
+    "v(0.15)": 1.2066772058693496,
+    "v(0)": -0.013509305528012095,
+    "v(-0.15)": -1.233695816925374,
+    "g_model": 0.9970242977142334,
+    "a_model": 1.3619948625564575,
+    "g_native": 9.970244407653809,
+    "a_native": 0.4307005703449249,
+    "v_native(0.15)": 3.815848371155045
+  },
+  "posterior_mean_natural": null,
+  "data_csv": "/oscar/home/igrahek/rnn_hssm/data/processed/fixed_bound/hssm_ready_nxx1_fixed_b2.0_g0.8.csv",
+  "n_all_rows": 34639,
+  "n_seeds_all": 20,
+  "n_seeds": 20,
+  "n_rows_after_seed_filter": 34639,
+  "n_fitted": 34639,
+  "subsample": "all",
+  "omission_frac": 0.13402499999999995,
+  "rt_min_native": 0.012,
+  "rt_median_native": 0.203,
+  "rt_max_native": 0.75,
+  "p_choice_plus": 0.49273939778861975,
+  "accuracy": 0.8920003464303242
+}

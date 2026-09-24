@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH --job-name=ta_ppcrt
-#SBATCH --account=carney-frankmj-condo2
+#SBATCH --account=carney-mjfrank-condo2
 #SBATCH --partition=batch
 #SBATCH --qos=carney-condo2
 #SBATCH --time=04:00:00

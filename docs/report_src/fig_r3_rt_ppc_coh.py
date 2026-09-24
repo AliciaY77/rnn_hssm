@@ -13,8 +13,9 @@ GAINS = [0.8, 1.0, 1.2]; BOUNDS = [1.5, 2.5, 2.94]; COHS = [0.03, 0.09, 0.15]; C
 H = OFFSET + K * HORIZON_NATIVE; rng = np.random.default_rng(11); bins = np.arange(0, 761, 20)   # 20-ms bins
 plt.rcParams.update({"font.size": 8, "axes.titlesize": 8, "axes.labelsize": 8, "xtick.labelsize": 7, "ytick.labelsize": 7})
 fig = plt.figure(figsize=(7.4, 9.6)); sfs = fig.subfigures(len(BOUNDS), 1, hspace=0.015)
-rows = []; all_axes = []; ylo, yhi = 0.0, 0.0
+rows = []; blocks = {}
 for sf, b in zip(sfs, BOUNDS):
+    blocks[b] = dict(axes=[], lo=0.0, hi=0.0)
     sf.suptitle(f"threshold {b} on dv", fontsize=9.5, fontweight="bold", y=0.985)
     axes = sf.subplots(len(COHS), 3, sharex=True); sf.subplots_adjust(top=0.80, bottom=0.09, left=0.12, right=0.99, hspace=0.22, wspace=0.10)
     for j, gn in enumerate(GAINS):
@@ -29,8 +30,8 @@ for sf, b in zip(sfs, BOUNDS):
                 ok = np.isfinite(rt); rt_s.append((rt[ok] - OFFSET) / K * 1000); cor_s.append(ch[ok] * sgn > 0)
             rt = np.concatenate(rt_s); cm = np.concatenate(cor_s)
             for vals, w in [(dd.rt[cn] * 1000, 1 / len(dd)), (dd.rt[~cn] * 1000, -1 / len(dd)), (rt[cm], 1 / len(rt)), (rt[~cm], -1 / len(rt))]:
-                h = np.histogram(vals, bins=bins)[0] * w; yhi = max(yhi, h.max(initial=0)); ylo = min(ylo, h.min(initial=0))
-            all_axes.append((ax, j))
+                h = np.histogram(vals, bins=bins)[0] * w; blocks[b]['hi'] = max(blocks[b]['hi'], h.max(initial=0)); blocks[b]['lo'] = min(blocks[b]['lo'], h.min(initial=0))
+            blocks[b]['axes'].append((ax, j))
             ax.hist(dd.rt[cn] * 1000, bins=bins, weights=np.ones(cn.sum()) / len(dd), color=COL[gn], alpha=0.35)
             ax.hist(dd.rt[~cn] * 1000, bins=bins, weights=-np.ones((~cn).sum()) / len(dd), color=COL[gn], alpha=0.35)
             ax.hist(rt[cm], bins=bins, weights=np.ones(cm.sum()) / len(rt), histtype="step", color="k", lw=0.9)
@@ -41,11 +42,16 @@ for sf, b in zip(sfs, BOUNDS):
             if j == 0: ax.set_ylabel(f"|coh| {c:.2f}")
             if b == BOUNDS[-1] and i == len(COHS) - 1: ax.set_xlabel("RT (ms)")
             rows.append(dict(bound=b, gain=gn, coh=c, n_net=len(dd), pc_net=cn.mean(), pc_model=cm.mean(), med_net=np.median(dd.rt) * 1000, med_model=np.median(rt), g=gq.mean(), g_lo=lo, g_hi=hi))
-ylim = (1.08 * ylo, 1.08 * yhi)
-for ax, j in all_axes:
-    ax.set_ylim(*ylim); ax.yaxis.set_major_locator(MultipleLocator(0.05)); ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{abs(y):.2f}"))
-    if j > 0: ax.tick_params(labelleft=False)
-fig.supylabel("fraction of trials per 20-ms bin (correct up, error down)", fontsize=8.5, x=0.01)
+def nice(x):                                   # round down to 1 significant digit (or 1.5 / 2.5 steps) for a tick value
+    if x <= 0: return 0.0
+    e = 10 ** np.floor(np.log10(x)); m = x / e
+    return float(max(v for v in (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8) if v <= m) * e)
+for b, blk in blocks.items():                  # y range shared within a threshold block, not across blocks
+    lo, hi = 1.1 * blk["lo"], 1.1 * blk["hi"]; ticks = [-nice(-blk["lo"]), 0.0, nice(blk["hi"])]
+    for ax, j in blk["axes"]:
+        ax.set_ylim(lo, hi); ax.set_yticks(ticks); ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{abs(y):g}"))
+        if j > 0: ax.tick_params(labelleft=False)
+fig.supylabel("fraction of trials per 20-ms bin (correct up, error down); scale shared within each threshold", fontsize=8.5, x=0.01)
 fig.legend([Patch(color="gray", alpha=0.35), Line2D([], [], color="k", lw=0.9)], ["network (correct up, error down)", "fitted OU, posterior mean (correct up, error down)"],
            loc="upper center", ncol=2, frameon=False, bbox_to_anchor=(0.5, 1.025), fontsize=8)
 fig.savefig(OUT / "fig_r3_rt_ppc_coh.png", dpi=160, bbox_inches="tight"); pd.DataFrame(rows).to_csv(OUT / "r3_rt_ppc_coh.csv", index=False)

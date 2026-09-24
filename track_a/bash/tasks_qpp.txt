@@ -1,0 +1,12 @@
+--gain 0.8 --bound 1.5 --k 10 --n-draws 80
+--gain 1.0 --bound 1.5 --k 10 --n-draws 80
+--gain 1.2 --bound 1.5 --k 10 --n-draws 80
+--gain 0.8 --bound 2.0 --k 10 --n-draws 80
+--gain 1.0 --bound 2.0 --k 10 --n-draws 80
+--gain 1.2 --bound 2.0 --k 10 --n-draws 80
+--gain 0.8 --bound 2.5 --k 10 --n-draws 80
+--gain 1.0 --bound 2.5 --k 10 --n-draws 80
+--gain 1.2 --bound 2.5 --k 10 --n-draws 80
+--gain 0.8 --bound 2.94 --k 10 --n-draws 80
+--gain 1.0 --bound 2.94 --k 10 --n-draws 80
+--gain 1.2 --bound 2.94 --k 10 --n-draws 80

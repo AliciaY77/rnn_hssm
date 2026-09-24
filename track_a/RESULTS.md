@@ -340,3 +340,49 @@ network. It also shows the corrected pipeline is not hard-wired to return g > 0.
 returns a converged, well-fitting model whose leak parameter is positive at every gain, is not identified
 in magnitude, and reproduces neither the psychophysical kernel nor its ordering across gain. Track B's
    positive result is therefore not something Track A could have found.**
+
+## 11. Bound sweep (2026-09-24, job 6668713; RT PPC jobs 6669698–6669700)
+
+Question from the advisor discussion: at bound 1.5 the RTs are crossings by the fast readout fluctuations; at a higher
+threshold the slow choice mode governs the crossing, so the network's dynamics should matter more. Same corrected pipeline
+as §0 (k = 10, t fixed at 0.3 + k·(min RT − 1 ms) of each dataset, no lapse, v ~ 1 + signed coherence, a, z, g shared,
+box-uniform priors, 4 × 1000/1000), pooled over 20 networks, constant bounds 2.0 / 2.5 / 2.94 on dv. **g > 0 = leaky.**
+All 9 fits: R-hat 1.00, ESS_bulk ≥ 1525, 1 divergence in 36 000 draws (gain 0.8, bound 2.94). Bound-1.5 rows are from §1/§4.
+
+| bound | gain | n fitted | g native [94 % HDI] (per s) | edge mass g | omissions network / model | median abs. RT-quantile error, correct (ms) | kernel slope, fitted OU with bound (network) |
+|---|---|---|---|---|---|---|---|
+| 1.5 | 0.8 | 38 640 | +10.0 [+9.9, +10.0] | 1.00 | 3.4 / 1.8 % | 6.5 | −0.041 (+0.039) |
+| 1.5 | 1.0 | 39 881 | +10.0 [+9.9, +10.0] | 0.99 | 0.3 / 0.2 % | 1.6 | −0.057 (+0.002) |
+| 1.5 | 1.2 | 39 988 | +9.2 [+8.7, +9.7] | 0.01 | 0.0 / 0.0 % | 0.8 | −0.064 (−0.026) |
+| 2.0 | 0.8 | 34 639 | +10.0 [+9.9, +10.0] | 1.00 | 13.4 / 6.1 % | 20.9 | −0.024 (+0.039) |
+| 2.0 | 1.0 | 39 321 | +9.9 [+9.8, +10.0] | 0.98 | 1.7 / 1.2 % | 3.7 | −0.045 (+0.002) |
+| 2.0 | 1.2 | 39 914 | +4.9 [+4.3, +5.4] | 0.00 | 0.2 / 0.2 % | 2.4 | −0.057 (−0.026) |
+| 2.5 | 0.8 | 27 722 | +6.7 [+6.2, +7.2] | 0.00 | 30.7 / 11.3 % | 33.7 | −0.011 (+0.039) |
+| 2.5 | 1.0 | 35 978 | +5.8 [+5.3, +6.2] | 0.00 | 10.1 / 2.9 % | 10.1 | −0.035 (+0.002) |
+| 2.5 | 1.2 | 37 772 | +4.7 [+4.2, +5.2] | 0.00 | 5.6 / 0.6 % | 3.5 | −0.052 (−0.026) |
+| 2.94 | 0.8 | 13 240 | +9.9 [+9.6, +10.0] | 0.86 | 66.9 / 20.7 % | 37.8 | +0.006 (+0.039) |
+| 2.94 | 1.0 | 27 855 | +2.3 [+1.9, +2.6] | 0.00 | 30.4 / 6.3 % | 24.1 | −0.025 (+0.002) |
+| 2.94 | 1.2 | 34 276 | +0.8 [+0.5, +1.1] | 0.00 | 14.3 / 1.8 % | 4.3 | −0.043 (−0.026) |
+
+Tables: `output/track_a/g*_k10_b{2.0,2.5,2.94}_pooled_{summary,meta,draws}`, `ppc_rt_summary_b*.csv`, `ppc_rt_*_b*.png`,
+`kernel_ppc_b*.csv/png`; figure (rows = bound, correct up / error down) in `round2-report:output/report/fig_bound_sweep.png`.
+Kernel slopes: variant (a) matched, posterior mean; leak-only variant (b) at 2.94: +0.067 / +0.027 / +0.011.
+
+Reading, in order of confidence:
+
+1. **g is positive in all 12 fits, every 94 % HDI excludes zero.** No threshold makes the RT-and-choice OU report instability.
+2. **g falls as the threshold rises, and at 2.5 and 2.94 it is ordered by gain as the theory predicts** (2.94: +9.9 / +2.3 /
+   +0.8). At 2.94 gain 1.2 is close to a perfect integrator (+0.8 [+0.5, +1.1]), not unstable (landscape: −6.2).
+3. **Where the ordering appears, the fit fails for the leaky network.** Gain 1.2 fits at every bound (quantile error ≤ 4 ms).
+   Gain 0.8 degrades steadily (6.5 → 20.9 → 33.7 → 37.8 ms) and the model predicts a fraction of the omissions (20.7 vs 66.9 %
+   at 2.94): the network's RTs at high threshold have a long flat tail that a one-timescale linear OU cannot produce. At 2.94
+   gain 0.8 is back on the ceiling.
+4. **The kernel ordering appears too, shifted toward primacy.** With its bound the fitted model goes +0.006 / −0.025 / −0.043
+   at 2.94 against the networks' +0.039 / +0.002 / −0.026: right ordering, span 0.049 vs 0.065, offset −0.02 to −0.03, so it
+   still gets the sign wrong at gains 0.8 and 1.0.
+5. **Truncation.** The non-crossers are dropped and HSSM has no censored likelihood; the model's own omission rate is far
+   below the data's at high bounds. The recovery study (#1) showed this biases g toward unstable; g stays positive regardless.
+
+So the advisor's reading holds in part: raising the threshold lets the slow dynamics show through in the *ordering* of g and of
+the kernel across gain, but a linear one-timescale OU with a constant bound then misfits the leaky network's RTs and omissions
+and still never reports instability. The model class, not the likelihood or the sampler, is what limits this route.

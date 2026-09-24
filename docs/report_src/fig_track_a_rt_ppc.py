@@ -33,16 +33,18 @@ for i, gn in enumerate(GAINS):
             rt, ch = simulate(r.v_Intercept_mean, r.v_coherence_signed_mean, r.a_mean, r.z_mean, r.g_mean, r.t_fixed, sgn * c, 10000, rng)
             rts.append(rt); chs.append(ch * sgn if c != 0 else ch)
         rt = np.concatenate(rts); ch = np.concatenate(chs); sim_c = ch > 0
-        wc = np.ones(sel_c.sum()) / len(dd); we = np.ones((~sel_c).sum()) / len(dd)      # densities share one normalisation per panel
+        # one normalisation per panel: correct (up) and error (down, negative weights) masses sum to 1 for network and for model
+        wc = np.ones(sel_c.sum()) / len(dd); we = -np.ones((~sel_c).sum()) / len(dd)
         ax.hist(dd.rt[sel_c] * 1000, bins=bins, weights=wc, color=COL[gn], alpha=0.35)
-        ax.hist(dd.rt[~sel_c] * 1000, bins=bins, weights=we, histtype="step", color=COL[gn], lw=0.8, alpha=0.9)
+        ax.hist(dd.rt[~sel_c] * 1000, bins=bins, weights=we, color=COL[gn], alpha=0.35)
         ax.hist(rt[sim_c], bins=bins, weights=np.ones(sim_c.sum()) / len(rt), histtype="step", color="k", lw=1.2)
-        ax.hist(rt[~sim_c], bins=bins, weights=np.ones((~sim_c).sum()) / len(rt), histtype="step", color="k", lw=1.0, ls="--")
+        ax.hist(rt[~sim_c], bins=bins, weights=-np.ones((~sim_c).sum()) / len(rt), histtype="step", color="k", lw=1.2)
+        ax.axhline(0, color="k", lw=0.5)
         acc_n = sel_c.mean(); acc_m = sim_c.mean()
         ax.set_title(f"gain {gn}, |coh| {c:.2f}\nP({lab_c}) net {acc_n:.2f} / OU {acc_m:.2f}", fontsize=7.5)
-        ax.set_yticks([]); ax.set_xlim(0, 750)
+        ax.set_yticks([]); ax.set_xlim(0, 750); yl = ax.get_ylim(); ax.set_ylim(-max(abs(yl[0]), 0.35 * yl[1]), yl[1])
         if i == 2: ax.set_xlabel("RT (ms)")
 from matplotlib.patches import Patch; from matplotlib.lines import Line2D
-fig.legend([Patch(color="gray", alpha=0.35), Line2D([], [], color="gray", lw=0.8), Line2D([], [], color="k", lw=1.2), Line2D([], [], color="k", lw=1.0, ls="--")],
-           ["network, correct", "network, error", "fitted OU, correct", "fitted OU, error"], loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.01))
+fig.legend([Patch(color="gray", alpha=0.35), Line2D([], [], color="k", lw=1.2)],
+           ["network (correct up, error down)", "fitted OU (correct up, error down)"], loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.01))
 plt.tight_layout(rect=(0, 0.04, 1, 1)); fig.savefig(OUT / "fig_track_a_rt_ppc.png", dpi=150); print("saved")

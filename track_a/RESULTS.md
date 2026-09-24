@@ -386,3 +386,12 @@ Reading, in order of confidence:
 So the advisor's reading holds in part: raising the threshold lets the slow dynamics show through in the *ordering* of g and of
 the kernel across gain, but a linear one-timescale OU with a constant bound then misfits the leaky network's RTs and omissions
 and still never reports instability. The model class, not the likelihood or the sampler, is what limits this route.
+
+**Addendum (intervals for the round-3 figures).** `track_a/ppc_replicates.py` (job 6669949): 40 posterior draws per fit, one
+replicate dataset of the data's size and coherence mix per draw → 95 % posterior-predictive intervals for omission rate,
+median RT and accuracy (`output/track_a/ppc_replicates_g*_k10_b*.csv`). With 40 000 trials the intervals are narrow, so the
+network lies outside them for some statistics even at 1.5 (gain 0.8 omissions 3.4 % vs [1.6, 1.9] %; gain 1.0 median RT 99 vs
+[95, 97] ms); at 2.94 the misses are large (gain 0.8: median RT 321 vs [275, 283] ms, omissions 66.9 % vs [19.9, 21.3] %).
+Kernel PPC with 40 draws (`kernel_ppc*_b{1.5,2.5,2.94}_d40.csv`): 95 % posterior interval of the model's kernel slope is
+±0.001 or less; the network's own slope has a 95 % bootstrap interval of about ±0.0013 (round2-report
+`output/report/network_kernel_boot.csv`), both far smaller than the model–network gaps of 0.02–0.08.
